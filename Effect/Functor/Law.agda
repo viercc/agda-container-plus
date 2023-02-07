@@ -1,4 +1,4 @@
-module FunctorLaw where
+module Effect.Functor.Law where
 
 open import Level
 open import Relation.Binary using (Rel; Setoid; IsEquivalence)

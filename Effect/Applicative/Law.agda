@@ -1,4 +1,4 @@
-module ApplicativeLaw where
+module Effect.Applicative.Law where
 
 open import Level
 open import Relation.Binary using (Rel; Setoid; IsEquivalence)
@@ -9,8 +9,8 @@ open import Relation.Binary.PropositionalEquality
 
 open import Function using (_∘_; id; _$_)
 open import Effect.Functor
+open import Effect.Functor.Law
 open import Effect.Applicative
-open import FunctorLaw
 
 private
   variable
@@ -34,7 +34,7 @@ record IsApplicative (F : Set ℓ → Set ℓ′) (raw : RawApplicative F) : Set
     
     ap-map : ∀ (f : A → B) (v : F A) → pure f <*> v ≈ f <$> v
     ap-homomorphism : ∀ (f : A → B) (x : A) → pure f <*> pure x ≈ pure (f x)
-    ap-interchange : ∀ (u : F (A → B)) (y : A) → u <*> pure y ≈ pure (λ f → f y) <*> u
+    ap-interchange : ∀ (u : F (A → B)) (y : A) → u <*> pure y ≈ (λ f → f y) <$> u
     ap-composition : ∀ (u : F (B → C)) (v : F (A → B)) (w : F A)
       → comp <$> u <*> v <*> w ≈ u <*> (v <*> w)
   
@@ -78,5 +78,4 @@ record IsApplicative (F : Set ℓ → Set ℓ′) (raw : RawApplicative F) : Set
         aux : (comp <$> u) <*> pure g ≈ (λ f → comp f g) <$> u
         aux =
           trans (ap-interchange (comp <$> u) g) $
-          trans (ap-map (λ r → r g) (comp <$> u)) $
           map-∘ ((λ r → r g)) comp u
