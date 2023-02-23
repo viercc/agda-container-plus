@@ -1,3 +1,5 @@
+{-# OPTIONS --without-K --safe #-}
+
 module Container.Action where
 
 open import Level

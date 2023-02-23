@@ -1,3 +1,5 @@
+{-# OPTIONS --without-K --safe #-}
+
 module Container.Functor where
 
 open import Level

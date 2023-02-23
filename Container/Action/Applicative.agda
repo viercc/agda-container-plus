@@ -1,7 +1,10 @@
+{-# OPTIONS --without-K --safe #-}
+
 module Container.Action.Applicative where
 
 open import Level
 
+open import Function.Base using (case_of_)
 open import Function using (_∘_; id; _$_; const)
 
 import Data.Product as Prod

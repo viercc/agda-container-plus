@@ -1,3 +1,5 @@
+{-# OPTIONS --without-K --safe #-}
+
 module Effect.Functor.Law where
 
 open import Level

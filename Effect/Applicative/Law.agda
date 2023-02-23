@@ -1,3 +1,5 @@
+{-# OPTIONS --without-K --safe #-}
+
 module Effect.Applicative.Law where
 
 open import Level
