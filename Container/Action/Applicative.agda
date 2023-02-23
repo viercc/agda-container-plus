@@ -113,3 +113,46 @@ isApplicative⟦_,_⟧ Con raw proof {e} = record{isApplicative} where
             (ϕleft-homo x y z p)
             (ϕinterchange x y z p)
             (ϕright-homo' x y z p)
+
+rawActionFromApplicative⟦_,_⟧ :
+  (Con : Container s p)
+  → RawApplicative {f = p} ⟦ Con ⟧
+  → RawAction Con
+rawActionFromApplicative⟦_,_⟧ {s = s} {p = p} Con raw = record{rawAction} where
+  open RawApplicative raw
+  open Prod using (_,_)
+  
+  S : Set s
+  S = Shape Con
+
+  P : S → Set p
+  P = Position Con
+  
+  data UnitP : Set p where
+    tp : UnitP
+  
+  module rawAction where
+    ε : S
+    ε = Prod.proj₁ (pure tp)
+    
+    _·_ : Op₂ S
+    _·_ x y = Prod.proj₁ ((x , \_ → id) <*> (y , \_ → tp))
+    
+    {-
+
+    This doesn't type check, because it implicitly assumes
+    
+    Prod.proj₁ ((x , f) <*> (y , g))
+
+    is irrelevant of the choice of f, g.
+    
+    We'll have to require a notion of equality on ⟦ Con ⟧
+    which RawFunctor and RawApplicative respects.
+
+    -}
+
+    ϕleft : (x y : S) → P (x · y) → P x
+    ϕleft x y pxy = Prod.proj₂ ((x , \px _ → px) <*> (y , \py → py)) pxy
+
+    ϕright : (x y : S) → P (x · y) → P y
+    ϕright x y pxy = Prod.proj₂ ((x , \_ py → py) <*> (y , \py → py)) pxy
