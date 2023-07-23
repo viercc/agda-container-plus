@@ -2,7 +2,9 @@
 
 Work in progress!
 
-Construction of [Containers](https://github.com/agda/agda-stdlib/blob/833f0facb24151c82c50bdb2359d648cce9f9661/src/Data/Container/Core.agda) which are [Applicative](https://github.com/agda/agda-stdlib/blob/833f0facb24151c82c50bdb2359d648cce9f9661/src/Effect/Applicative.agda).
+Construction of [Containers](https://github.com/agda/agda-stdlib/blob/833f0facb24151c82c50bdb2359d648cce9f9661/src/Data/Container/Core.agda) which are [Applicative](https://github.com/agda/agda-stdlib/blob/833f0facb24151c82c50bdb2359d648cce9f9661/src/Effect/Applicative.agda)[^1].
+
+[^1]: https://link.springer.com/chapter/10.1007/978-3-319-68953-1_8
 
 Built on [agda-stdlib](https://github.com/agda/agda-stdlib).
 
