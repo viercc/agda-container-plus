@@ -64,19 +64,18 @@ rawApplicative⟦_,_⟧ Con raw {e} = record {reifiedApplicative}
 
 -- IsAction proves IsApplicative
 isApplicative⟦_,_⟧ :
-  (Con : Container s p) (raw : RawAction Con) 
-  → IsAction Con raw → {e : Level} → IsApplicative {ℓ = e} ⟦ Con ⟧ rawApplicative⟦ Con , raw ⟧
-isApplicative⟦_,_⟧ Con raw proof {e} = record{isApplicative} where
-  open RawAction raw
-  open RawApplicative {f = e} rawApplicative⟦ Con , raw ⟧
-  
+  (Con : Container s p) (act : Action Con) 
+  → {e : Level} → IsApplicative {ℓ = e} ⟦ Con ⟧ rawApplicative⟦ Con , Action.rawAction act ⟧
+isApplicative⟦_,_⟧ Con act {e} = record{isApplicative} where
+  open RawApplicative {f = e} rawApplicative⟦ Con , Action.rawAction act ⟧
+
   open Prod using (proj₁; proj₂; _,_)
   
   module isApplicative where
     variable
       A B C : Set e
     
-    open IsAction proof
+    open Action act
     isFunctor = isFunctor⟦ Con ⟧
     open IsFunctor isFunctor
     
@@ -114,6 +113,8 @@ isApplicative⟦_,_⟧ Con raw proof {e} = record{isApplicative} where
             (ϕinterchange x y z p)
             (ϕright-homo' x y z p)
 
+{-
+
 rawActionFromApplicative⟦_,_⟧ :
   (Con : Container s p)
   → RawApplicative {f = p} ⟦ Con ⟧
@@ -138,21 +139,16 @@ rawActionFromApplicative⟦_,_⟧ {s = s} {p = p} Con raw = record{rawAction} wh
     _·_ : Op₂ S
     _·_ x y = Prod.proj₁ ((x , \_ → id) <*> (y , \_ → tp))
     
-    {-
-
-    This doesn't type check, because it implicitly assumes
-    
-    Prod.proj₁ ((x , f) <*> (y , g))
-
-    is irrelevant of the choice of f, g.
-    
-    We'll have to require a notion of equality on ⟦ Con ⟧
-    which RawFunctor and RawApplicative respects.
-
-    -}
+    -- This doesn't type check, because it implicitly assumes
+    --
+    --    Prod.proj₁ ((x , f) <*> (y , g))
+    --
+    -- is irrelevant of the choice of f, g.
 
     ϕleft : (x y : S) → P (x · y) → P x
     ϕleft x y pxy = Prod.proj₂ ((x , \px _ → px) <*> (y , \py → py)) pxy
 
     ϕright : (x y : S) → P (x · y) → P y
     ϕright x y pxy = Prod.proj₂ ((x , \_ py → py) <*> (y , \py → py)) pxy
+
+-}

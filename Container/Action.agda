@@ -1,4 +1,4 @@
-{-# OPTIONS --without-K --safe #-}
+{-# OPTIONS --safe #-}
 
 module Container.Action where
 
@@ -11,6 +11,9 @@ import Relation.Binary.PropositionalEquality as P
 open import Relation.Binary.PropositionalEquality
     using ()
     renaming (_≡_ to infix 3 _≡_)
+
+open import Relation.Binary.PropositionalEquality.WithK
+  using (≡-irrelevant)
 
 open import Data.Container.Core
 
@@ -61,9 +64,10 @@ _≗_ f g = ∀ p → f p ≡ g p
     trans = λ x≗y y≗z p → P.trans (x≗y p) (y≗z p)
   }
 
-subst-inv : ∀ {I : Set s} {i j : I} (eq : i ≡ j) (P : I → Set p) (p : P i)
-  → P.subst P (P.sym eq) (P.subst P eq p) ≡ p
-subst-inv P.refl _ p = P.refl
+-- *** Using axiom K ***
+subst-elim : ∀ {i} {I : Set i} {i : I} (eq : i ≡ i) (P : I → Set p) (x : P i)
+  → P.subst P eq x ≡ x
+subst-elim eq P x = P.cong (λ eq' → P.subst P eq' x) (≡-irrelevant eq P.refl)
 
 -- Laws on Action Con
 record IsAction (Con : Container s p) (raw : RawAction Con) : Set (s ⊔ p) where
@@ -75,25 +79,36 @@ record IsAction (Con : Container s p) (raw : RawAction Con) : Set (s ⊔ p) wher
   
   open IsMonoid isMonoid renaming (∙-cong to ·-cong) public
   
+  lift≡ : {x y : S} → (x ≡ y) → P x → P y
+  lift≡ = P.subst P
+  
   field
-    ϕleft-id : (x : S) → ϕleft x ε ≗ P.subst P (identityʳ x)
+    ϕleft-id : (x : S) → ϕleft x ε ≗ lift≡ (identityʳ x)
     
-    ϕright-id : (x : S) → ϕright ε x ≗ P.subst P (identityˡ x)
+    ϕright-id : (x : S) → ϕright ε x ≗ lift≡ (identityˡ x)
     
     ϕleft-homo : (x y z : S)
-      → ϕleft x y ∘ ϕleft (x · y) z ≗ ϕleft x (y · z) ∘ P.subst P (assoc x y z)
+      → ϕleft x y ∘ ϕleft (x · y) z ≗ ϕleft x (y · z) ∘ lift≡ (assoc x y z)
     
     ϕright-homo : (x y z : S)
-      → ϕright y z ∘ ϕright x (y · z) ≗ ϕright (x · y) z ∘ P.subst P (P.sym (assoc x y z))
+      → ϕright y z ∘ ϕright x (y · z) ≗ ϕright (x · y) z ∘ lift≡ (P.sym (assoc x y z))
     
     ϕinterchange : (x y z : S)
-      → ϕmid x y z ≗ ϕmid' x y z ∘ P.subst P (assoc x y z)
+      → ϕmid x y z ≗ ϕmid' x y z ∘ lift≡ (assoc x y z)
   
   ϕright-homo' : (x y z : S)
-    → ϕright (x · y) z ≗ ϕright y z ∘ ϕright x (y · z) ∘ P.subst P (assoc x y z)
+    → ϕright (x · y) z ≗ ϕright y z ∘ ϕright x (y · z) ∘ lift≡ (assoc x y z)
   ϕright-homo' x y z p =
     P.sym $
-    P.trans (ϕright-homo x y z (P.subst P eq p)) $
-    P.cong (ϕright (x · y) z) (subst-inv eq P p)
+    P.trans (ϕright-homo x y z (lift≡ eq p)) $
+    P.cong (ϕright (x · y) z) (P.subst-sym-subst eq)
     where
       eq = assoc x y z
+
+record Action (Con : Container s p) : Set (s ⊔ p) where
+  field
+    rawAction : RawAction Con
+    isAction : IsAction Con rawAction
+  
+  open RawAction rawAction public
+  open IsAction isAction public
