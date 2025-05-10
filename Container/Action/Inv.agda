@@ -51,8 +51,10 @@ record IsActionInv (Con : Container s p) (raw : RawActionInv Con) : Set (s ⊔ p
   open RawActionInv raw
   
   field
-    isAction : IsAction Con rawAction
-    isGroup : IsGroup _≡_ _·_ ε _⁻¹
+    instance
+      isAction : IsAction Con rawAction
+    instance
+      isGroup : IsGroup _≡_ _·_ ε _⁻¹
 
   open IsAction isAction public
   open IsGroup isGroup using (inverseˡ; inverseʳ) public
