@@ -34,6 +34,13 @@ Id = CC.id
 record RawMonad (C : Container s p) : Set (suc (s ⊔ p)) where
   open Container C renaming (Shape to S; Position to P) public
 
+  field
+    unit : Id ⇒ C
+    join : Comp C C ⇒ C
+
+record RawMonad' (C : Container s p) : Set (suc (s ⊔ p)) where
+  open Container C renaming (Shape to S; Position to P) public
+
   infixr 2 _•_
   
   field
@@ -42,22 +49,23 @@ record RawMonad (C : Container s p) : Set (suc (s ⊔ p)) where
     ↖ : {s : S} → {v : P s → S} → P (s • v) → P s
     ↗ : {s : S} → {v : P s → S} → (p : P (s • v)) → P (v (↖ p))
 
-module _ {C : Container s p} (rawMonad : RawMonad C) where
-  open RawMonad rawMonad
-
-  unit : Id ⇒ C
-  unit = F.const ε ▷ F.const tt
-
-  join : Comp C C ⇒ C
-  join .shape (s , v) = s • v
-  join .position {s = s , v} p = mk◇ (↖ p , ↗ p)
-
-extractRawMonad : ∀ {C : Container s p}
-  → (Id ⇒ C) → (Comp C C ⇒ C) → RawMonad C
-extractRawMonad {C = C} unit join = record {rawMonadImpl}
+RawMonad'-to-RawMonad : ∀ {C : Container s p} (rawMonad' : RawMonad' C) → RawMonad C
+RawMonad'-to-RawMonad {C = C} rawMonad' = record{ unit = unit; join = join }
   where
-    module rawMonadImpl where
-      open Container C renaming (Shape to S; Position to P) public
+    open RawMonad' rawMonad'
+
+    unit : Id ⇒ C
+    unit = F.const ε ▷ F.const tt
+
+    join : Comp C C ⇒ C
+    join .shape (s , v) = s • v
+    join .position {s = s , v} p = mk◇ (↖ p , ↗ p)
+
+RawMonad-to-RawMonad' : ∀ {C : Container s p} (rawMonad : RawMonad C) → RawMonad' C
+RawMonad-to-RawMonad' rawMonad = record {rawMonadImpl'}
+  where
+    module rawMonadImpl' where
+      open RawMonad rawMonad
 
       ε : S
       ε = shape unit tt
