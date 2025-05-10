@@ -34,25 +34,28 @@ open import Container.Functor
 
 private
   variable
-    s p e : Level
+    s p : Level
 
-rawApplicative⟦_,_⟧ : (Con : Container s p) → (RawAction Con)
-  → {e : Level} → RawApplicative {f = e} (⟦ Con ⟧)
-rawApplicative⟦_,_⟧ Con raw {e} = record {reifiedApplicative}
-  where
+-- Make RawApplicative out of RawAction
+module _ {Con : Container s p} (raw : RawAction Con) where
+  private
     open RawAction raw
     open Prod using (_,_)
-
-    module reifiedApplicative where
+    
+    module applicativeImpl (e : Level) where
       variable
         A B C : Set e
       
-      rawFunctor = rawFunctor⟦ Con ⟧
+      rawFunctor = rawFunctor⟦_⟧ {e = e} Con
+
       pure : A → ⟦ Con ⟧ A
       pure a = (ε , const a)
 
       _<*>_ : ⟦ Con ⟧ (A → B) → ⟦ Con ⟧ A → ⟦ Con ⟧ B
       _<*>_ (x , f) (y , g) = (x · y , λ (i : P (x · y)) → f (ϕleft x y i) (g (ϕright x y i)))
+
+  rawApplicative⟦_⟧ : {e : Level} → RawApplicative {f = e} (⟦ Con ⟧)
+  rawApplicative⟦_⟧ {e} = record {applicativeImpl e}
 
 ≡-cong₃ : ∀ {ℓ ℓ′ : Level} {X Y Z : Set ℓ} {R : Set ℓ′}
   → (f : X → Y → Z → R)
@@ -63,55 +66,70 @@ rawApplicative⟦_,_⟧ Con raw {e} = record {reifiedApplicative}
 ≡-cong₃ f P.refl P.refl P.refl = P.refl
 
 -- IsAction proves IsApplicative
-isApplicative⟦_,_⟧ :
-  (Con : Container s p) (act : Action Con) 
-  → {e : Level} → IsApplicative {ℓ = e} ⟦ Con ⟧ rawApplicative⟦ Con , Action.rawAction act ⟧
-isApplicative⟦_,_⟧ Con act {e} = record{isApplicative} where
-  open RawApplicative {f = e} rawApplicative⟦ Con , Action.rawAction act ⟧
-
+module _ {Con : Container s p} (action : Action Con) where
+  open Action action
   open Prod using (proj₁; proj₂; _,_)
   
-  module isApplicative where
-    variable
-      A B C : Set e
+  private    
+    module _ (x y z : S) where
+      ϕright-homo' : ϕright y z ∘ ϕright x (y · z) ∘ lift≡ (assoc x y z) ≗ ϕright (x · y) z
+      ϕright-homo' p =
+        begin
+          ϕright y z (ϕright x (y · z) (lift≡ eq p))
+        ≡⟨ ϕright-homo x y z (lift≡ eq p) ⟩
+          ϕright (x · y) z (lift≡' eq (lift≡ eq p))
+        ≡⟨ P.cong (ϕright _ _) (P.subst-sym-subst eq) ⟩
+          ϕright (x · y) z p
+        ∎
+        where
+          open P.≡-Reasoning
+          eq = assoc x y z
     
-    open Action act
-    isFunctor = isFunctor⟦ Con ⟧
-    open IsFunctor isFunctor
-    
-    F : Set _ → Set _
-    F = ⟦ Con ⟧
-    
-    ap-cong : ∀ {u₁ u₂ : F (A → B)} {v₁ v₂ : F A}
-      → (u₁ ≈ u₂) → (v₁ ≈ v₂) → (u₁ <*> v₁ ≈ u₂ <*> v₂)
-    ap-cong {u₁ = x , f1} {u₂ = _ , f2} {v₁ = y , g1} {v₂ = _ , g2} (Pw P.refl f≗) (Pw P.refl g≗) =
-      let
-        fg≗ p =
-          P.trans
-            (P.cong-app (f≗ (ϕleft x y p)) _)
-            (P.cong (f2 (ϕleft x y p)) (g≗ (ϕright x y p)))           
-      in Pw P.refl fg≗
+    module isApplicativeImpl (e : Level) where
+      variable
+        A B C : Set e
+      
+      open RawApplicative {f = e} rawApplicative⟦ rawAction ⟧
 
-    ap-map : ∀ (f : A → B) (v : F A) → pure f <*> v ≈ f <$> v
-    ap-map f (y , g) = Pw (identityˡ y) (λ p → P.cong (f ∘ g) (ϕright-id y p))
+      isFunctor = isFunctor⟦_⟧ Con {e = e}
+      open IsFunctor isFunctor
+      
+      F : Set e → Set (s ⊔ p ⊔ e)
+      F = ⟦ Con ⟧
+      
+      ap-cong : ∀ {u₁ u₂ : F (A → B)} {v₁ v₂ : F A}
+        → (u₁ ≈ u₂) → (v₁ ≈ v₂) → (u₁ <*> v₁ ≈ u₂ <*> v₂)
+      ap-cong {u₁ = x , f1} {u₂ = _ , f2} {v₁ = y , g1} {v₂ = _ , g2} (Pw P.refl f≗) (Pw P.refl g≗) =
+        let
+          fg≗ p =
+            P.trans
+              (P.cong-app (f≗ (ϕleft x y p)) _)
+              (P.cong (f2 (ϕleft x y p)) (g≗ (ϕright x y p)))           
+        in Pw P.refl fg≗
 
-    ap-homomorphism : ∀ (f : A → B) (x : A) → pure f <*> pure x ≈ pure (f x)
-    ap-homomorphism f x = Pw (identityˡ ε) (λ p → P.refl)
+      ap-map : ∀ (f : A → B) (v : F A) → pure f <*> v ≈ f <$> v
+      ap-map f (y , g) = Pw (identityˡ y) (λ p → P.cong (f ∘ g) (ϕright-id y p))
 
-    ap-interchange : ∀ (u : F (A → B)) (y : A) → u <*> pure y ≈ (λ f → f y) <$> u
-    ap-interchange (x , f) y = Pw (identityʳ x) (λ p → P.cong (λ q → f q y) (ϕleft-id x p))
+      ap-homomorphism : ∀ (f : A → B) (x : A) → pure f <*> pure x ≈ pure (f x)
+      ap-homomorphism f x = Pw (identityˡ ε) (λ p → P.refl)
 
-    ap-composition : ∀ (u : F (B → C)) (v : F (A → B)) (w : F A)
-      → comp <$> u <*> v <*> w ≈ u <*> (v <*> w)
-    ap-composition (x , f) (y , g) (z , h) =
-      Pw (assoc x y z) fgh-equality
-      where
-        fgh-equality : _
-        fgh-equality p =
-          ≡-cong₃ (λ p₁ p₂ p₃ → f p₁ (g p₂ (h p₃)))
-            (ϕleft-homo x y z p)
-            (ϕinterchange x y z p)
-            (ϕright-homo' x y z p)
+      ap-interchange : ∀ (u : F (A → B)) (y : A) → u <*> pure y ≈ (λ f → f y) <$> u
+      ap-interchange (x , f) y = Pw (identityʳ x) (λ p → P.cong (λ q → f q y) (ϕleft-id x p))
+
+      ap-composition : ∀ (u : F (B → C)) (v : F (A → B)) (w : F A)
+        → comp <$> u <*> v <*> w ≈ u <*> (v <*> w)
+      ap-composition (x , f) (y , g) (z , h) =
+        Pw (assoc x y z) fgh-equality
+        where          
+          fgh-equality : _
+          fgh-equality p =
+            ≡-cong₃ (λ p₁ p₂ p₃ → f p₁ (g p₂ (h p₃)))
+              (ϕleft-homo x y z p)
+              (ϕinterchange x y z p)
+              (P.sym (ϕright-homo' x y z p))
+
+  isApplicative⟦_⟧ : {e : Level} → IsApplicative {ℓ = e} ⟦ Con ⟧ rawApplicative⟦ rawAction ⟧
+  isApplicative⟦_⟧ {e = e} = record{ isApplicativeImpl e }
 
 {-
 
@@ -151,4 +169,4 @@ rawActionFromApplicative⟦_,_⟧ {s = s} {p = p} Con raw = record{rawAction} wh
     ϕright : (x y : S) → P (x · y) → P y
     ϕright x y pxy = Prod.proj₂ ((x , \_ py → py) <*> (y , \py → py)) pxy
 
--}
+-} 
