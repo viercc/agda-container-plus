@@ -7,6 +7,7 @@ open import Level
 import Function as F
 import Data.Product as Prod
 open Prod using (proj₁; proj₂; _,_)
+open import Data.Unit.Polymorphic.Base using (⊤; tt)
 
 open import Relation.Binary using (Rel; Setoid; IsEquivalence)
 import Relation.Binary.PropositionalEquality as P
@@ -21,9 +22,13 @@ open C◇ using (◇) renaming (any to mk◇)
 import Data.Container.Morphism as CM   -- Container Morphism
 import Data.Container.Combinator as CC -- Container Combinator
 
-open CC using () renaming (id to Id; _∘_ to Comp)
+open CC using () renaming (_∘_ to Comp)
 
 module ∘-Properties where
+
+  -- Identity container with level specified to Set = Set zero
+  Id : Container Level.zero Level.zero
+  Id = CC.id
 
   -- Properties of container compositions (Comp = CC._∘_)
 
@@ -31,6 +36,37 @@ module ∘-Properties where
     variable
       c c' d d' e e' f f' : Level
   
+  -- Comp is monoidal
+  Compλ : ∀ {C : Container c c'}
+    → C ⇒ Comp Id C
+  Compλ {C = C} = CC.to-id ▷ λ (mk◇ (_ , p)) → p
+
+  Compλ' : ∀ {C : Container c c'}
+    → Comp Id C ⇒ C
+  Compλ' {C = C} = CC.from-id ▷ λ p → mk◇ (tt , p)
+
+  Compρ : ∀ {C : Container c c'}
+    → C ⇒ Comp C Id
+  Compρ {C = C} = (λ s → s , F.const tt) ▷ λ (mk◇ (p , _)) → p
+
+  Compρ' : ∀ {C : Container c c'}
+    → Comp C Id ⇒ C
+  Compρ' {C = C} = proj₁ ▷ λ p → mk◇ (p , tt)
+
+{-
+  Compα : ∀ {C : Container c c'} {D : Container d d'} {E : Container e e'}
+    → Comp (Comp C D) E ⇒ Comp C (Comp D E)
+  Compα {C = C} {D = D} {E = E} = shapeα ▷ posα
+    where
+      shapeα : ⟦ Comp C D ⟧ (Shape E) → ⟦ C ⟧ (⟦ D ⟧ (Shape E))
+      shapeα = CC.from-∘ C D
+
+      posα : { sCDE : ⟦ Comp C D ⟧ (Shape E) }
+        → ◇ C (◇ D (Position E)) (shapeα sCDE) 
+        → ◇ (Comp C D) (Position E) sCDE
+      posα {sCDE} = {!!}
+-}
+
   -- Comp is bifunctor (Container × Container) → Container
   
   map₁ : ∀ {C : Container c c'} {D : Container d d'} {E : Container e e'}

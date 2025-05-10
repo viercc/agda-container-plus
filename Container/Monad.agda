@@ -20,9 +20,13 @@ import Data.Container.Relation.Unary.Any as C◇
 open C◇ using (◇) renaming (any to mk◇)
 
 import Data.Container.Morphism as CM   -- Container Morphism
+open CM using (id; _∘_)
+
 import Data.Container.Combinator as CC -- Container Combinator
 
 open CC using () renaming (_∘_ to Comp)
+
+open import Container.Combinator.Properties
 
 private
   variable
@@ -31,9 +35,11 @@ private
 Id : Container Level.zero Level.zero
 Id = CC.id
 
+-- Raw (without law) definition
+
 record RawMonad (C : Container s p) : Set (suc (s ⊔ p)) where
   open Container C renaming (Shape to S; Position to P) public
-
+  
   field
     unit : Id ⇒ C
     join : Comp C C ⇒ C
@@ -78,3 +84,16 @@ RawMonad-to-RawMonad' rawMonad = record {rawMonadImpl'}
 
       ↗ : {s : S} → {v : P s → S} → (p : P (s • v)) → P (v (↖ p))
       ↗ {s} {v} p = proj₂ (◇.proof (position join {s = s , v } p))
+
+-- Monad laws
+
+record IsMonad (C : Container s p) (raw : RawMonad C) : Set (suc (s ⊔ p)) where
+  open RawMonad raw
+  module Comp = ∘-Properties
+
+  field
+    unit-left : ∀ {X : Set p} {xs : ⟦ C ⟧ X}
+      → ⟪ join ∘ Comp.map₁ unit ∘ Comp.Compλ ⟫ xs ≡ xs
+    
+    unit-right : ∀ {X : Set p} {xs : ⟦ C ⟧ X}
+      → ⟪ join ∘ Comp.map₂ unit ∘ Comp.Compρ ⟫ xs ≡ xs
