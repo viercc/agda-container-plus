@@ -46,7 +46,7 @@ module _ {Con : Container s p} (raw : RawAction Con) where
       variable
         A B C : Set e
       
-      rawFunctor = rawFunctor⟦_⟧ {e = e} Con
+      rawFunctor = makeRawFunctor Con e
 
       pure : A → ⟦ Con ⟧ A
       pure a = (ε , const a)
@@ -54,23 +54,23 @@ module _ {Con : Container s p} (raw : RawAction Con) where
       _<*>_ : ⟦ Con ⟧ (A → B) → ⟦ Con ⟧ A → ⟦ Con ⟧ B
       _<*>_ (x , f) (y , g) = (x · y , λ (i : P (x · y)) → f (ϕleft x y i) (g (ϕright x y i)))
 
-  rawApplicative⟦_⟧ : {e : Level} → RawApplicative {f = e} (⟦ Con ⟧)
-  rawApplicative⟦_⟧ {e} = record {applicativeImpl e}
+  makeRawApplicative : (e : Level) → RawApplicative {f = e} (⟦ Con ⟧)
+  makeRawApplicative e = record {applicativeImpl e}
 
-≡-cong₃ : ∀ {ℓ ℓ′ : Level} {X Y Z : Set ℓ} {R : Set ℓ′}
-  → (f : X → Y → Z → R)
-  → {x1 x2 : X} → (x1 ≡ x2)
-  → {y1 y2 : Y} → (y1 ≡ y2)
-  → {z1 z2 : Z} → (z1 ≡ z2)
-  → (f x1 y1 z1 ≡ f x2 y2 z2)
-≡-cong₃ f P.refl P.refl P.refl = P.refl
-
--- IsAction proves IsApplicative
+-- Make Applicative (with law) out of Action (with law)
 module _ {Con : Container s p} (action : Action Con) where
   open Action action
   open Prod using (proj₁; proj₂; _,_)
   
-  private    
+  private
+    ≡-cong₃ : ∀ {a e : Level} {X Y Z : Set a} {R : Set e}
+      → (f : X → Y → Z → R)
+      → {x1 x2 : X} → (x1 ≡ x2)
+      → {y1 y2 : Y} → (y1 ≡ y2)
+      → {z1 z2 : Z} → (z1 ≡ z2)
+      → (f x1 y1 z1 ≡ f x2 y2 z2)
+    ≡-cong₃ f P.refl P.refl P.refl = P.refl
+
     module _ (x y z : S) where
       ϕright-homo' : ϕright y z ∘ ϕright x (y · z) ∘ lift≡ (assoc x y z) ≗ ϕright (x · y) z
       ϕright-homo' p =
@@ -89,9 +89,9 @@ module _ {Con : Container s p} (action : Action Con) where
       variable
         A B C : Set e
       
-      open RawApplicative {f = e} rawApplicative⟦ rawAction ⟧
+      open RawApplicative (makeRawApplicative rawAction e)
 
-      isFunctor = isFunctor⟦_⟧ Con {e = e}
+      isFunctor = makeIsFunctor Con e
       open IsFunctor isFunctor
       
       F : Set e → Set (s ⊔ p ⊔ e)
@@ -128,8 +128,8 @@ module _ {Con : Container s p} (action : Action Con) where
               (ϕinterchange x y z p)
               (P.sym (ϕright-homo' x y z p))
 
-  isApplicative⟦_⟧ : {e : Level} → IsApplicative {ℓ = e} ⟦ Con ⟧ rawApplicative⟦ rawAction ⟧
-  isApplicative⟦_⟧ {e = e} = record{ isApplicativeImpl e }
+  makeIsApplicative : (e : Level) → IsApplicative ⟦ Con ⟧ (makeRawApplicative rawAction e)
+  makeIsApplicative e = record{ isApplicativeImpl e }
 
 {-
 

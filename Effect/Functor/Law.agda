@@ -11,7 +11,7 @@ open import Effect.Functor
 
 private
   variable
-    ℓ ℓ′ ℓ″ : Level
+    ℓ ℓ′ : Level
     A B C X Y : Set ℓ
 
 record IsFunctor (F : Set ℓ → Set ℓ′) (raw : RawFunctor F) : Set (suc (ℓ ⊔ ℓ′)) where
