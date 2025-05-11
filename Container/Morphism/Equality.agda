@@ -23,7 +23,7 @@ open import Data.Container.Relation.Binary.Pointwise
 module _ {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ : Container s₂ p₂) where
 
   -- Pointwise equality between container morphisms
-  record Eq (ff gg : C₁ ⇒ C₂) : Set (suc (s₁ ⊔ s₂ ⊔ p₂) ⊔ p₁) where
+  record Eq (ff gg : C₁ ⇒ C₂) : Set (s₁ ⊔ s₂ ⊔ p₁ ⊔ p₂) where
     constructor mk≈
 
     open Container C₁ renaming (Shape to S₁; Position to P₁)
@@ -37,8 +37,10 @@ module _ {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ : Container s�
     field shape    : f ≗ g
           position : ∀ (c : S₁) → f# {c} ≗ g# {c} ∘ P.subst P₂ (shape c)
 
+infix 4 _≈_
+
 _≈_ : ∀ {s₁ p₁ s₂ p₂} {C₁ : Container s₁ p₁} {C₂ : Container s₂ p₂}
-  → (m n : C₁ ⇒ C₂) → Set (suc (s₁ ⊔ s₂ ⊔ p₂) ⊔ p₁)
+  → (m n : C₁ ⇒ C₂) → Set (s₁ ⊔ s₂ ⊔ p₁ ⊔ p₂)
 _≈_ {C₁ = C₁} {C₂ = C₂} = Eq C₁ C₂
 
 private
