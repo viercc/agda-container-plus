@@ -59,11 +59,11 @@ module _ (H : Container c c' → Container d d' → Container e e') where
       map₁-map₂ : ∀ {C₁ C₂ D₁ D₂}
         → (α : C₁ ⇒ C₂) → (β : D₁ ⇒ D₂) → map₁ α CM.∘ map₂ β ≈ map₂ β CM.∘ map₁ α  
 
-module ∘-Properties where
+-- Identity container with level specified to zero
+Id : Container Level.zero Level.zero
+Id = CC.id
 
-  -- Identity container with level specified to zero
-  Id : Container Level.zero Level.zero
-  Id = CC.id
+module ∘-Properties where
 
   -- Properties of container compositions (Comp = CC._∘_)
 
@@ -149,3 +149,5 @@ module ∘-Properties where
 
         iso₂ : assoc⇐ CM.∘ assoc⇒ ≈ CM.id (Comp (Comp C D) E)
         iso₂ = with≡ _ _ (λ _ → P.refl)
+    
+    -- TODO : triangle and pentagon equalities
