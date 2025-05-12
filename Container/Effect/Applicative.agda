@@ -9,11 +9,8 @@ open import Function using (_∘_; _∘′_; id; _$_; const)
 
 import Data.Product as Prod
 
-open import Relation.Binary using (Rel; Setoid; IsEquivalence; _⇒_)
-import Relation.Binary.PropositionalEquality as P
-open import Relation.Binary.PropositionalEquality
-    using ()
-    renaming (_≡_ to infix 3 _≡_)
+open import Relation.Binary.PropositionalEquality as ≡
+  using (_≡_)
 
 open import Data.Container.Core
 import Data.Container.Properties as ContProp
@@ -69,7 +66,7 @@ module _ {Con : Container s p} (action : Action Con) where
       → {y1 y2 : Y} → (y1 ≡ y2)
       → {z1 z2 : Z} → (z1 ≡ z2)
       → (f x1 y1 z1 ≡ f x2 y2 z2)
-    ≡-cong₃ f P.refl P.refl P.refl = P.refl
+    ≡-cong₃ f ≡.refl ≡.refl ≡.refl = ≡.refl
 
     module _ (x y z : S) where
       ϕright-homo' : ϕright ∘ ϕright ∘ lift≡ (assoc x y z) ≗ ϕright
@@ -78,11 +75,11 @@ module _ {Con : Container s p} (action : Action Con) where
           ϕright (ϕright (lift≡ eq p))
         ≡⟨ ϕright-homo x y z (lift≡ eq p) ⟩
           ϕright (lift≡' eq (lift≡ eq p))
-        ≡⟨ P.cong ϕright (P.subst-sym-subst eq) ⟩
+        ≡⟨ ≡.cong ϕright (≡.subst-sym-subst eq) ⟩
           ϕright p
         ∎
         where
-          open P.≡-Reasoning
+          open ≡.≡-Reasoning
           eq = assoc x y z
     
     module isApplicativeImpl (e : Level) where
@@ -99,18 +96,18 @@ module _ {Con : Container s p} (action : Action Con) where
       
       <*>-cong : ∀ {u₁ u₂ : F (A → B)} {v₁ v₂ : F A}
         → (u₁ ≈ u₂) → (v₁ ≈ v₂) → (u₁ <*> v₁ ≈ u₂ <*> v₂)
-      <*>-cong {u₁ = x , _} {v₁ = y , _} (Pw P.refl f≗) (Pw P.refl g≗) = Pw P.refl fg≗
+      <*>-cong {u₁ = x , _} {v₁ = y , _} (Pw ≡.refl f≗) (Pw ≡.refl g≗) = Pw ≡.refl fg≗
         where
-          fg≗ = λ (p : P (x · y)) → P.cong₂ (_$_) (f≗ (ϕleft p)) (g≗ (ϕright p)) 
+          fg≗ = λ (p : P (x · y)) → ≡.cong₂ (_$_) (f≗ (ϕleft p)) (g≗ (ϕright p)) 
 
       ap-map : ∀ (f : A → B) (v : F A) → pure f <*> v ≈ f <$> v
-      ap-map f (y , g) = Pw (identityˡ y) (λ p → P.cong (f ∘ g) (ϕright-id y p))
+      ap-map f (y , g) = Pw (identityˡ y) (λ p → ≡.cong (f ∘ g) (ϕright-id y p))
 
       homomorphism : ∀ (f : A → B) (x : A) → pure f <*> pure x ≈ pure (f x)
-      homomorphism f x = Pw (identityˡ ε) (λ p → P.refl)
+      homomorphism f x = Pw (identityˡ ε) (λ p → ≡.refl)
 
       interchange : ∀ (u : F (A → B)) (y : A) → u <*> pure y ≈ (λ f → f y) <$> u
-      interchange (x , f) y = Pw (identityʳ x) (λ p → P.cong (λ q → f q y) (ϕleft-id x p))
+      interchange (x , f) y = Pw (identityʳ x) (λ p → ≡.cong (λ q → f q y) (ϕleft-id x p))
 
       composition : ∀ (u : F (B → C)) (v : F (A → B)) (w : F A)
         → _∘′_ <$> u <*> v <*> w ≈ u <*> (v <*> w)
@@ -122,7 +119,7 @@ module _ {Con : Container s p} (action : Action Con) where
             ≡-cong₃ (λ p₁ p₂ p₃ → f p₁ (g p₂ (h p₃)))
               (ϕleft-homo x y z p)
               (ϕinterchange x y z p)
-              (P.sym (ϕright-homo' x y z p))
+              (≡.sym (ϕright-homo' x y z p))
 
   makeIsApplicative : (e : Level) → IsApplicative ⟦ Con ⟧ (makeRawApplicative rawAction e)
   makeIsApplicative e = record{

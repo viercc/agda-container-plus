@@ -4,8 +4,8 @@ module Container.Morphism.Equality where
 
 open import Level
 
-import Relation.Binary.PropositionalEquality as P
-open P using (_≡_; _≗_)
+open import Relation.Binary.PropositionalEquality as ≡
+  using (_≡_; _≗_)
 
 import Function as F
 open F using (id; _∘_)
@@ -35,7 +35,7 @@ module _ {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ : Container s�
       (shape to g; position to g#)
     
     field shape    : f ≗ g
-          position : ∀ (c : S₁) → f# {c} ≗ g# {c} ∘ P.subst P₂ (shape c)
+          position : ∀ (c : S₁) → f# {c} ≗ g# {c} ∘ ≡.subst P₂ (shape c)
 
 infix 4 _≈_
 
@@ -48,9 +48,9 @@ private
   module _ {a} {A : Set a} {b} {B : A → Set b} {c} {C : Set c} where
     subst-contramap : {x y : A} → (eq : x ≡ y)
       → {f : B x → C} {g : B y → C}
-      → (P.subst (λ z → (B z → C)) eq f ≡ g)
-      → ∀ (bx : B x) → f bx ≡ g (P.subst B eq bx)
-    subst-contramap P.refl P.refl _ = P.refl
+      → (≡.subst (λ z → (B z → C)) eq f ≡ g)
+      → ∀ (bx : B x) → f bx ≡ g (≡.subst B eq bx)
+    subst-contramap ≡.refl ≡.refl _ = ≡.refl
 
 module ≈-correctness {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ : Container s₂ p₂) where
   open Container C₁ renaming (Shape to S₁; Position to P₁)
@@ -61,7 +61,7 @@ module ≈-correctness {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ 
     
     -- Pointwise equality between ⟦_⟧
     Eq⟦⟧ : Rel (⟦ C ⟧ X) (s ⊔ p ⊔ x)
-    Eq⟦⟧ = CEq.Eq (P.setoid X) C
+    Eq⟦⟧ = CEq.Eq (≡.setoid X) C
   
   -- Pointwise Eq⟦⟧ on ⟪⟫
   Eq⟪⟫ : ∀ (ff gg : C₁ ⇒ C₂) {x} {X : Set x} → Set (s₁ ⊔ s₂ ⊔ p₁ ⊔ p₂ ⊔ x)
@@ -103,7 +103,7 @@ module ≈-correctness {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ 
       shape≈ : ∀ (c : S₁) → f c ≡ g c
       shape≈ c = equiv (c , id) .Pointwise.shape
 
-      position≈ : ∀ (c : S₁) (p : P₂ (f c)) → f# {c} p ≡ g# {c} (P.subst P₂ (shape≈ c) p)
+      position≈ : ∀ (c : S₁) (p : P₂ (f c)) → f# {c} p ≡ g# {c} (≡.subst P₂ (shape≈ c) p)
       position≈ c = equiv (c , id) .Pointwise.position
   
   -- == ­← direction
@@ -123,8 +123,8 @@ module ≈-correctness {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ 
       shapeEq : f c ≡ g c
       shapeEq = shape≈ c
 
-      positionEq : ∀ (p : P₂ (f c)) → px (f# {c} p) ≡ px (g# {c} (P.subst P₂ shapeEq p))
-      positionEq p = P.cong px (position≈ c p)
+      positionEq : ∀ (p : P₂ (f c)) → px (f# {c} p) ≡ px (g# {c} (≡.subst P₂ shapeEq p))
+      positionEq p = ≡.cong px (position≈ c p)
 
   -- ≡⟪⟫ is stronger than Eq⟪⟫, thus → direction can take ≡⟪⟫ instead
   ≡⟪⟫' : ∀ (ff gg : C₁ ⇒ C₂) → Set (s₁ ⊔ s₂ ⊔ p₁ ⊔ p₂)

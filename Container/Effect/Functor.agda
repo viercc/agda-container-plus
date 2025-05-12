@@ -6,11 +6,9 @@ open import Level
 
 open import Function using (_∘_; id; _$_)
 
-open import Relation.Binary using (Rel; Setoid; IsEquivalence)
-import Relation.Binary.PropositionalEquality as P
-open import Relation.Binary.PropositionalEquality
-    using ()
-    renaming (_≡_ to infix 3 _≡_)
+open import Relation.Binary using (Rel; IsEquivalence)
+open import Relation.Binary.PropositionalEquality as ≡
+    using (_≡_)
 
 open import Data.Container.Core
 import Data.Container.Properties as ContProp
@@ -37,20 +35,21 @@ module _ (Con : Container s p) where
       infix 3 _≈_
       
       _≈_ : ∀ {A : Set e} → Rel (⟦ Con ⟧ A) (s ⊔ p ⊔ e)
-      _≈_ {A} = CSetoid.Eq (P.setoid A) Con
+      _≈_ {A} = CSetoid.Eq (≡.setoid A) Con
 
       isEquivalence : {A : Set e} → IsEquivalence (_≈_ {A = A})
-      isEquivalence {A} = CSetoid.isEquivalence (P.setoid A) Con
+      isEquivalence {A} = CSetoid.isEquivalence (≡.setoid A) Con
 
       <$>-cong : ∀  {A B : Set e} (f : A → B) {u₁ u₂ : ⟦ Con ⟧ A} → (u₁ ≈ u₂) → (f <$> u₁ ≈ f <$> u₂)
-      <$>-cong f (Pw s≡ pos≗) = Pw s≡ (λ p → P.cong f (pos≗ p))
+      <$>-cong f (Pw s≡ pos≗) = Pw s≡ (λ p → ≡.cong f (pos≗ p))
 
       <$>-id : ∀ {A : Set e} (x : ⟦ Con ⟧ A) → (id <$> x ≈ x)
-      <$>-id {A = A} x = ContProp.map-identity (P.setoid A) x
+      <$>-id {A = A} x = ContProp.map-identity (≡.setoid A) x
 
       <$>-∘  : ∀ {A B C : Set e} (f : B → C) (g : A → B) (x : ⟦ Con ⟧ A)
         → (f <$> (g <$> x) ≈ (f ∘ g) <$> x)
-      <$>-∘ {C = C} f g x = ContProp.map-compose (P.setoid C) f g x
+      <$>-∘ {C = C} f g x = ContProp.map-compose (≡.setoid C) f g x
 
   makeIsFunctor : (e : Level) → IsFunctor {ℓ = e} ⟦ Con ⟧ (makeRawFunctor e)
   makeIsFunctor e = record {isFunctor e}
+ 

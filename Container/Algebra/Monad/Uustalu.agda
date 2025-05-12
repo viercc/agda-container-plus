@@ -9,8 +9,8 @@ import Data.Product as Prod
 open Prod using (proj₁; proj₂; _,_)
 open import Data.Unit.Polymorphic.Base using (⊤; tt)
 
-import Relation.Binary.PropositionalEquality as ≡
-open ≡ using (_≡_; _≗_)
+open import Relation.Binary.PropositionalEquality as ≡
+  using (_≡_; _≗_)
 
 open import Data.Container.Core renaming (map to map⟦⟧)
 import Data.Container.Relation.Unary.Any as C◇

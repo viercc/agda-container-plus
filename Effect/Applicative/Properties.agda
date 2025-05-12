@@ -8,9 +8,8 @@ open import Relation.Binary using (Rel; Setoid; IsEquivalence)
 
 import Relation.Binary.Reasoning.Syntax as Reasoning
 
-import Relation.Binary.PropositionalEquality as P
-open import Relation.Binary.PropositionalEquality
-    using () renaming (_≡_ to infix 3 _≡_)
+import Relation.Binary.PropositionalEquality as ≡
+    using (_≡_)
 
 open import Function using (_∘′_; id; _$_)
 open import Effect.Functor

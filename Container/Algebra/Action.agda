@@ -7,10 +7,9 @@ open import Level
 open import Function using (_∘_; id; _$_; const)
 
 open import Relation.Binary using (Rel; Setoid; IsEquivalence)
-import Relation.Binary.PropositionalEquality as P
-open import Relation.Binary.PropositionalEquality
-    using ()
-    renaming (_≡_ to infix 3 _≡_)
+
+open import Relation.Binary.PropositionalEquality as ≡
+    using (_≡_)
 
 open import Data.Container.Core
 
@@ -54,9 +53,9 @@ _≗_ f g = ∀ p → f p ≡ g p
 
 ≗-isEquivalence : ∀ {ℓ} {X Y : Set ℓ} → IsEquivalence (_≗_ {X = X} {Y = Y})
 ≗-isEquivalence = record
-  { refl = λ _ → P.refl;
-    sym = λ x≗y p → P.sym (x≗y p);
-    trans = λ x≗y y≗z p → P.trans (x≗y p) (y≗z p)
+  { refl = λ _ → ≡.refl;
+    sym = λ x≗y p → ≡.sym (x≗y p);
+    trans = λ x≗y y≗z p → ≡.trans (x≗y p) (y≗z p)
   }
 
 -- Laws on Action Con
@@ -70,10 +69,10 @@ record IsAction (Con : Container s p) (raw : RawAction Con) : Set (s ⊔ p) wher
   open IsMonoid isMonoid using (assoc; identityˡ; identityʳ) public
   
   lift≡ : {x y : S} → (x ≡ y) → P x → P y
-  lift≡ = P.subst P
+  lift≡ = ≡.subst P
 
   lift≡' : {x y : S} → (x ≡ y) → P y → P x
-  lift≡' eq = P.subst P (P.sym eq)
+  lift≡' eq = ≡.subst P (≡.sym eq)
   
   field
     ϕleft-id : (x : S) → ϕleft ≗ lift≡ (identityʳ x)
