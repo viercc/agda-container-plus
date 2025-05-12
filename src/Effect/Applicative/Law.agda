@@ -18,7 +18,8 @@ record IsApplicative (F : Set ℓ → Set ℓ′) (raw : RawApplicative F) : Set
   open RawApplicative raw
 
   field
-    isFunctor : IsFunctor F rawFunctor
+    instance
+      isFunctor : IsFunctor F rawFunctor
 
   open IsFunctor isFunctor public
 
@@ -31,3 +32,12 @@ record IsApplicative (F : Set ℓ → Set ℓ′) (raw : RawApplicative F) : Set
     interchange : ∀ {A B : Set ℓ} (u : F (A → B)) (y : A) → u <*> pure y ≈ (λ f → f y) <$> u
     composition : ∀ {A B C : Set ℓ} (u : F (B → C)) (v : F (A → B)) (w : F A)
       → _∘′_ <$> u <*> v <*> w ≈ u <*> (v <*> w)
+
+record Applicative (F : Set ℓ → Set ℓ′) : Set (suc (ℓ ⊔ ℓ′)) where
+  field
+    instance
+      rawApplicative : RawApplicative F
+      isApplicative : IsApplicative F rawApplicative
+  
+  open RawApplicative rawApplicative public
+  open IsApplicative isApplicative public

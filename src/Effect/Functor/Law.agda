@@ -28,3 +28,12 @@ record IsFunctor (F : Set ℓ → Set ℓ′) (raw : RawFunctor F) : Set (suc (�
     <$>-id : ∀ (x : F A) → (id <$> x ≈ x)
     <$>-∘  : ∀ (f : B → C) (g : A → B) (x : F A)
       → (f <$> (g <$> x) ≈ (f ∘ g) <$> x)
+
+record Functor (F : Set ℓ → Set ℓ′) : Set (suc (ℓ ⊔ ℓ′)) where
+  field
+    instance 
+      rawFunctor : RawFunctor F
+      isFunctor : IsFunctor F rawFunctor
+  
+  open RawFunctor rawFunctor public
+  open IsFunctor isFunctor public
