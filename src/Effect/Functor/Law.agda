@@ -28,6 +28,9 @@ record IsFunctor (F : Set ℓ → Set ℓ′) (raw : RawFunctor F) : Set (suc (�
     <$>-id : ∀ (x : F A) → (id <$> x ≈ x)
     <$>-∘  : ∀ (f : B → C) (g : A → B) (x : F A)
       → (f <$> (g <$> x) ≈ (f ∘ g) <$> x)
+  
+  setoid : ∀ (A : Set ℓ) → Setoid ℓ′ ℓ′
+  setoid A = record { Carrier = F A; isEquivalence = isEquivalence {A = A} }
 
 record Functor (F : Set ℓ → Set ℓ′) : Set (suc (ℓ ⊔ ℓ′)) where
   field

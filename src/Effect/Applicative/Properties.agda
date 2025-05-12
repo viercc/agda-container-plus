@@ -6,9 +6,9 @@ module Effect.Applicative.Properties where
 open import Level
 open import Relation.Binary using (Rel; Setoid; IsEquivalence)
 
-import Relation.Binary.Reasoning.Syntax as Reasoning
+import Relation.Binary.Reasoning.Setoid as Reasoning
 
-import Relation.Binary.PropositionalEquality as ≡
+open import Relation.Binary.PropositionalEquality as ≡
     using (_≡_)
 
 open import Function using (_∘′_; id; _$_)
@@ -17,27 +17,15 @@ open import Effect.Functor.Law
 open import Effect.Applicative
 open import Effect.Applicative.Law
 
-private
-  variable
-    ℓ ℓ′ : Level
-
-module properties (F : Set ℓ → Set ℓ′) (raw : RawApplicative F) (isApplicative : IsApplicative F raw) where
-  open RawApplicative raw
-  open IsApplicative isApplicative
+module properties {ℓ ℓ′} (F : Set ℓ → Set ℓ′) (applicative : Applicative F) where
+  open Applicative applicative
   open IsEquivalence {{...}}
-  
-  module ≈-Reasoning {A : Set ℓ} where
-    private
-      eqv : Rel (F A) ℓ′
-      eqv = _≈_ {A = A}
-    open Reasoning.begin-syntax eqv id public
-    open Reasoning.≈-syntax eqv eqv trans sym public
-    open Reasoning.end-syntax eqv refl public
+  module ≈-Reasoning {A : Set ℓ} = Reasoning (setoid A)
 
   -- congruences
 
   pure-cong : ∀ {A} {x y : A} → x ≡ y → pure x ≈ pure y
-  pure-cong x≡y = reflexive (P.cong pure x≡y)
+  pure-cong x≡y = reflexive (≡.cong pure x≡y)
   
   zipWith-cong : ∀ {A B C : Set ℓ} (f : A → B → C) {u₁ u₂ : F A} {v₁ v₂ : F B}
     → (u₁ ≈ u₂) → (v₁ ≈ v₂) → (zipWith f u₁ v₁ ≈ zipWith f u₂ v₂)
@@ -124,3 +112,94 @@ module properties (F : Set ℓ → Set ℓ′) (raw : RawApplicative F) (isAppli
       u <*> (g <$> v)
     ∎
     where open ≈-Reasoning
+
+
+module _ where
+
+  {-
+    Old tale: In Haskell, the type class Applicative used to be defined by
+    the following formulation, which _never_ mentions the underlying Functor.
+
+    It was because Applicative was not a subclass of Functor, but independent class
+    such that
+
+    - their methods (pure, _<*>_) can make it Functor (_<$>_) by itself
+    - their laws (identity, homomorphism, interchange, composition) can prove
+      Functor laws by itself
+    
+  -}
+  record BareApplicative {ℓ ℓ′} (F : Set ℓ → Set ℓ′) : Set (suc (ℓ ⊔ ℓ′)) where
+    infixl 4 _<*>_
+    infix 3 _≈_
+
+    field
+      -- Minimal operations to define RawFunctor + RawApplicative
+      pure : ∀ {A} → A → F A
+      _<*>_ : ∀ {A B} → F (A → B) → F A → F B
+
+      -- Notion of equivalence is needed anyway
+      _≈_ : ∀ {A} → Rel (F A) ℓ′
+      instance
+        isEquivalence : {A : Set ℓ} → IsEquivalence (_≈_ {A = A})
+      
+      -- Minimal additional property to define IsFunctor + IsApplicative
+      
+      <*>-cong : ∀ {A B : Set ℓ} {u₁ u₂ : F (A → B)} {v₁ v₂ : F A}
+        → (u₁ ≈ u₂) → (v₁ ≈ v₂) → (u₁ <*> v₁ ≈ u₂ <*> v₂)
+      identity : ∀ {A} (x : F A) → pure id <*> x ≈ x 
+      homomorphism : ∀ {A B : Set ℓ} (f : A → B) (x : A) → pure f <*> pure x ≈ pure (f x)
+      interchange : ∀ {A B : Set ℓ} (u : F (A → B)) (y : A) → u <*> pure y ≈ pure (λ f → f y) <*> u
+      composition : ∀ {A B C : Set ℓ} (u : F (B → C)) (v : F (A → B)) (w : F A)
+        → pure _∘′_ <*> u <*> v <*> w ≈ u <*> (v <*> w)
+    
+    setoid : (A : Set ℓ) → Setoid ℓ′ ℓ′
+    setoid A = record { isEquivalence = isEquivalence {A = A} }
+
+  mkApplicative : ∀ {ℓ ℓ′} {F : Set ℓ → Set ℓ′} → BareApplicative F → Applicative F
+  mkApplicative {ℓ} {ℓ′} {F = F} bare = record { rawApplicative = raw; isApplicative = record {isApplicativeImpl} }
+    where
+      open IsEquivalence {{...}}
+      
+      module ≈-Reasoning {A : Set ℓ} = Reasoning (BareApplicative.setoid bare A)
+      
+      raw = mkRawApplicative F (bare .BareApplicative.pure) (bare .BareApplicative._<*>_)
+
+      module isApplicativeImpl where
+        open BareApplicative bare public
+        open RawApplicative raw using (rawFunctor; _<$>_)
+
+        -- Functor laws can be derived from BareApplicative
+        
+        <$>-cong : ∀ {A B} (f : A → B) {u₁ u₂ : F A} → (u₁ ≈ u₂) → (f <$> u₁ ≈ f <$> u₂)
+        <$>-cong f u₁≈u₂ = <*>-cong refl u₁≈u₂
+
+        <$>-id : ∀ {A} (x : F A) → (id <$> x ≈ x)
+        <$>-id x = identity x
+        
+        <$>-∘ : ∀ {A B C} (f : B → C) (g : A → B) (x : F A) → (f <$> (g <$> x) ≈ (f ∘′ g) <$> x)
+        <$>-∘ f g x = begin
+            f <$> (g <$> x)
+          ≈⟨ refl ⟩
+            pure f <*> (pure g <*> x)
+          ≈⟨ composition (pure f) (pure g) x ⟨
+            pure _∘′_ <*> pure f <*> pure g <*> x
+          ≈⟨ <*>-cong (<*>-cong (homomorphism _ _) refl) refl ⟩
+            pure (f ∘′_) <*> pure g <*> x
+          ≈⟨ <*>-cong (homomorphism _ _) refl ⟩
+            pure (f ∘′ g) <*> x
+          ≈⟨ refl ⟩
+            f ∘′ g <$> x
+          ∎
+          where open ≈-Reasoning
+        
+        isFunctor : IsFunctor F rawFunctor
+        isFunctor = record {
+            isEquivalence = isEquivalence;
+            <$>-cong = <$>-cong;
+            <$>-id = <$>-id;
+            <$>-∘ = <$>-∘
+          }
+
+        -- map is definitionally true
+        map : ∀ {A B} (f : A → B) (v : F A) → pure f <*> v ≈ f <$> v
+        map _ _ = refl
