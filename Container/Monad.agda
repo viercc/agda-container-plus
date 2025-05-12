@@ -11,7 +11,7 @@ open import Data.Unit.Polymorphic.Base using (⊤; tt)
 
 open import Relation.Binary using (Rel; Setoid; IsEquivalence)
 import Relation.Binary.PropositionalEquality as ≡
-open ≡ using (_≡_)
+open ≡ using (_≡_; _≗_)
 
 open import Data.Container.Core renaming (map to map⟦⟧)
 import Data.Container.Relation.Unary.Any as C◇
@@ -32,6 +32,18 @@ private
   variable
     s p : Level
 
+-- Common symbols
+module _ {C : Container s p} where
+  leftId⇒ : C ⇒ Comp Id C
+  leftId⇒ = ∘-Properties.leftId ._⇔_.to
+
+  rightId⇒ : C ⇒ Comp C Id
+  rightId⇒ = ∘-Properties.rightId ._⇔_.to
+
+  assoc⇒ : Comp (Comp C C) C ⇒ Comp C (Comp C C)
+  assoc⇒ = ∘-Properties.assoc ._⇔_.to
+
+
 -- Monad as monoid with respect to Comp
 
 module AsMonoid where
@@ -46,14 +58,6 @@ module AsMonoid where
     open RawMonad raw
     open ∘-Properties using (map₁; map₂)
     
-    leftId⇒ : C ⇒ Comp Id C
-    leftId⇒ = ∘-Properties.leftId ._⇔_.to
-
-    rightId⇒ : C ⇒ Comp C Id
-    rightId⇒ = ∘-Properties.rightId {C = C} ._⇔_.to
-
-    assoc⇒ : Comp (Comp C C) C ⇒ Comp C (Comp C C)
-    assoc⇒ = ∘-Properties.assoc ._⇔_.to
 
     field
       left-unit : join ∘ map₁ unit ∘ leftId⇒ ≈ id C
@@ -62,7 +66,7 @@ module AsMonoid where
 
 -- Uustalu-style description of Containers ∩ Monads
 module Uustalu where
-  
+
   record RawMonad (C : Container s p) : Set (s ⊔ p) where
     open Container C renaming (Shape to S; Position to P) public
 
@@ -120,6 +124,63 @@ from-Uustalu {C = C} rawMonad' = record{ unit = unit; join = join }
     join .shape (s , v) = s • v
     join .position {s = s , v} p = mk◇ (↖ p , ↗ p)
 
+module ≡-util {a b c ℓ : Level} where
+  subst-dcong₂ : ∀ {A : Set a} {B : A → Set b} {C : Set c}
+    → (P : C → Set ℓ)
+    → (f : (a₀ : A) → B a₀ → C)
+    → {a₁ a₂ : A} (eqA : a₁ ≡ a₂) {b₁ : B a₁} {b₂ : B a₂} (eqB : ≡.subst B eqA b₁ ≡ b₂)
+    → ≡.subst P (≡.dcong₂ f eqA eqB) ≡ ≡.dsubst₂ (λ a b → P (f a b)) eqA eqB
+  subst-dcong₂ P f ≡.refl ≡.refl = ≡.refl
+
+from-Uustalu-law : ∀ {C : Container s p} (raw' : Uustalu.RawMonad C) (isMonad' : Uustalu.IsMonad C raw')
+  → AsMonoid.IsMonad C (from-Uustalu raw')
+from-Uustalu-law {C = C} raw' isMonad' = record{ impl }
+  where
+    module impl where
+      open ∘-Properties using (map₁; map₂)
+      open ◇-util using (curry◇; ◇-dcong; ◇-assocˡ)
+      
+      open Uustalu.RawMonad raw'
+      open Uustalu.IsMonad isMonad'
+      open AsMonoid.RawMonad (from-Uustalu raw') hiding (S; P)
+
+      left-unit = mk≈ ε-• (λ _ p → ↗-outer-ε p)
+      right-unit = mk≈ •-ε (λ _ p → ↖-inner-ε p)
+
+      private
+        j : ⟦ C ⟧ S → S
+        j = Prod.uncurry _•_
+        
+        assoc-shape : (s₃ : ⟦ Comp C C ⟧ S) →
+          j (⟪ join ⟫ s₃) ≡ j (map⟦⟧ j (CC.from-∘ C C s₃))
+        assoc-shape ( (s , v) , w◇ ) = •-• s v (curry◇ w◇)
+
+        assoc-pos : (s₃ : ⟦ Comp C C ⟧ S) (p : P (j (⟪ join ⟫ s₃)))
+          → (let q = ≡.subst P (assoc-shape s₃) p)
+          → mk◇ (mk◇ (↖ (↖ p) , ↗ (↖ p)) , ↗ p)
+               ≡
+             ◇-assocˡ (mk◇ (↖ q , mk◇ (↖ (↗ q), ↗ (↗ q))))
+        assoc-pos s₃@(_ , w◇) p = ◇-dcong P (◇-dcong P eqLL eqRL) eqRR'
+          where
+            q = ≡.subst P (assoc-shape s₃) p
+            p≡q = ≡.refl {x = q}
+            w = curry◇ w◇
+
+            eqLL = ↖-↖ p≡q
+            eqRL = ↗-↖ p≡q
+            eqRR = ↗-↗ p≡q
+
+            same-subst : _ ≡ ≡.dsubst₂ (λ p₁ p₂ → P (w p₁ p₂)) eqLL eqRL
+            same-subst =
+              ≡-util.subst-dcong₂
+                (λ p' → P (w◇ p'))
+                (λ p₁ p₂ → mk◇ (p₁ , p₂))
+                eqLL
+                eqRL
+            eqRR' = ≡.trans (≡.cong-app same-subst (↗ p)) eqRR
+
+      assoc = mk≈ assoc-shape assoc-pos
+
 to-Uustalu : ∀ {C : Container s p} (rawMonad : AsMonoid.RawMonad C) → Uustalu.RawMonad C
 to-Uustalu rawMonad = record {rawMonadImpl'}
   where
@@ -137,3 +198,4 @@ to-Uustalu rawMonad = record {rawMonadImpl'}
 
       ↗ : {s : S} → {v : P s → S} → (p : P (s • v)) → P (v (↖ p))
       ↗ {s} {v} p = proj₂ (◇.proof (position join {s = s , v } p))
+ 

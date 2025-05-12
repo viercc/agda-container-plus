@@ -10,10 +10,8 @@ open Prod using (proj₁; proj₂; _,_)
 open import Data.Unit.Polymorphic.Base using (⊤; tt)
 
 open import Relation.Binary using (Rel; Setoid; IsEquivalence)
-import Relation.Binary.PropositionalEquality as P
-open import Relation.Binary.PropositionalEquality
-    using ()
-    renaming (_≡_ to infix 3 _≡_)
+import Relation.Binary.PropositionalEquality as ≡
+open ≡ using (_≡_)
 
 open import Data.Container.Core renaming (map to map⟦⟧)
 import Data.Container.Relation.Unary.Any as C◇
@@ -63,6 +61,42 @@ module _ (H : Container c c' → Container d d' → Container e e') where
 Id : Container Level.zero Level.zero
 Id = CC.id
 
+module ◇-util where
+  -- proof utility
+  module _ {C : Container c c'} where
+    open Container C renaming (Shape to S; Position to P)
+    
+    ◇-dcong : ∀ {x ℓ} {X : Set x} (Q : X → Set ℓ) {cx : ⟦ C ⟧ X}
+      → {p₁ p₂ : P (proj₁ cx)} (eq-p : p₁ ≡ p₂)
+      → {q₁ : Q (proj₂ cx p₁)} {q₂ : Q (proj₂ cx p₂)}
+      → (eq-q : ≡.subst (λ p → Q (proj₂ cx p)) eq-p q₁ ≡ q₂)
+      → mk◇ {P = Q} {cx = cx} (p₁ , q₁) ≡ mk◇ (p₂ , q₂)
+    ◇-dcong Q eq-p eq-q =
+      ≡.dcong₂ (λ r₁ r₂ → mk◇ (r₁ , r₂)) eq-p eq-q
+    
+    curry◇ : ∀ {x} {X : Set x} {cx : ⟦ C ⟧ X} {ℓ} {Q : X → Set ℓ} {y} {Y : Set y}
+      → (◇ C Q cx → Y)
+      → ((p : P (proj₁ cx)) → Q (proj₂ cx p) → Y)
+    curry◇ k p q = k (mk◇ (p , q))
+
+    uncurry◇ : ∀ {x} {X : Set x} {s : S} {v : P s → X} {ℓ} {Q : X → Set ℓ} {y} {Y : Set y}
+      → ((p : P s) → Q (v p) → Y)
+      → (◇ C Q (s , v) → Y)
+    uncurry◇ w (mk◇ (p , q)) = w p q
+  
+  module _ {C : Container c c'} {D : Container d d'} where
+    ◇-assocˡ : ∀ {x ℓ} {X : Set x} {Q : X → Set ℓ}
+      → { cx : ⟦ Comp C D ⟧ X }
+      → ◇ C (◇ D Q) (CC.from-∘ C D cx) 
+      → ◇ (Comp C D) Q cx
+    ◇-assocˡ (mk◇ (p₁ , mk◇ (p₂ , q))) = mk◇ (mk◇ (p₁ , p₂) , q)
+
+    ◇-assocʳ : ∀ {x ℓ} {X : Set x} {Q : X → Set ℓ}
+      → { cdx : ⟦ C ⟧ (⟦ D ⟧ X) }
+      → ◇ (Comp C D) Q (CC.to-∘ C D cdx)
+      → ◇ C (◇ D Q) cdx
+    ◇-assocʳ (mk◇ (mk◇ (p₁ , p₂) , q)) = mk◇ (p₁ , mk◇ (p₂ , q))
+
 module ∘-Properties where
 
   -- Properties of container compositions (Comp = CC._∘_)
@@ -85,41 +119,42 @@ module ∘-Properties where
 
   functorial₁ : {D : Container d d'} → Functorial (λ (C : Container c c') → Comp C D) map₁
   functorial₁ {D = D} = record {
-      map-id = λ {C} → with≡ (Comp C D) (Comp C D) (λ _ → P.refl);
-      map-∘ = λ {C₁ C₂ C₃} _ _ → with≡ (Comp C₁ D) (Comp C₃ D) (λ _ → P.refl)
+      map-id = λ {C} → with≡ (Comp C D) (Comp C D) (λ _ → ≡.refl);
+      map-∘ = λ {C₁ C₂ C₃} _ _ → with≡ (Comp C₁ D) (Comp C₃ D) (λ _ → ≡.refl)
     }
 
   functorial₂ : {C : Container c c'} → Functorial (λ (D : Container d d') → Comp C D) map₂
   functorial₂ {C = C} = record {
-      map-id = λ {D} → with≡ (Comp C D) (Comp C D) (λ _ → P.refl);
-      map-∘ = λ {D₁ D₂ D₃} _ _ → with≡ (Comp C D₁) (Comp C D₃) (λ _ → P.refl)
+      map-id = λ {D} → with≡ (Comp C D) (Comp C D) (λ _ → ≡.refl);
+      map-∘ = λ {D₁ D₂ D₃} _ _ → with≡ (Comp C D₁) (Comp C D₃) (λ _ → ≡.refl)
     }
   
   bifunctorial : Bifunctorial (λ (C : Container c c') (D : Container d d') → Comp C D) map₁ map₂
   bifunctorial = record {
       functorial₁ = functorial₁;
       functorial₂ = functorial₂;
-      map₁-map₂ = λ {C₁ C₂ D₁ D₂} _ _ → with≡ (Comp C₁ D₁) (Comp C₂ D₂) (λ _ → P.refl)
+      map₁-map₂ = λ {C₁ C₂ D₁ D₂} _ _ → with≡ (Comp C₁ D₁) (Comp C₂ D₂) (λ _ → ≡.refl)
     }
   
   -- Comp is monoidal
 
   module _ where
     open _⇔_
+    open ◇-util
 
     leftId : ∀ {C : Container c c'}
       → C ⇔ Comp Id C
     leftId {C = C} .to   = CC.to-id ▷ λ (mk◇ (_ , p)) → p
     leftId {C = C} .from = CC.from-id ▷ λ p → mk◇ (tt , p)
-    leftId {C = C} .to-from = with≡ (Comp Id C) (Comp Id C) (λ _ → P.refl)
-    leftId {C = C} .from-to = with≡ C C (λ _ → P.refl)
+    leftId {C = C} .to-from = with≡ (Comp Id C) (Comp Id C) (λ _ → ≡.refl)
+    leftId {C = C} .from-to = with≡ C C (λ _ → ≡.refl)
 
     rightId : ∀ {C : Container c c'}
       → C ⇔ Comp C Id
     rightId {C = C} .to   = (λ s → s , F.const tt) ▷ λ (mk◇ (p , _)) → p
     rightId {C = C} .from = proj₁ ▷ λ p → mk◇ (p , tt)
-    rightId {C = C} .to-from = with≡ (Comp C Id) (Comp C Id) (λ _ → P.refl)
-    rightId {C = C} .from-to = with≡ C C (λ _ → P.refl)
+    rightId {C = C} .to-from = with≡ (Comp C Id) (Comp C Id) (λ _ → ≡.refl)
+    rightId {C = C} .from-to = with≡ C C (λ _ → ≡.refl)
 
     assoc : ∀ {C : Container c c'} {D : Container d d'} {E : Container e e'}
       → Comp (Comp C D) E ⇔ Comp C (Comp D E)
@@ -128,26 +163,20 @@ module ∘-Properties where
         to-shape : ⟦ Comp C D ⟧ (Shape E) → ⟦ C ⟧ (⟦ D ⟧ (Shape E))
         to-shape = CC.from-∘ C D
 
-        to-pos : { sCDE : ⟦ Comp C D ⟧ (Shape E) }
-          → ◇ C (◇ D (Position E)) (to-shape sCDE) 
-          → ◇ (Comp C D) (Position E) sCDE
-        to-pos {sCDE} (mk◇ (pc , mk◇ (pd , pe))) = mk◇ (mk◇ (pc , pd) , pe)
+        to-pos = ◇-assocˡ {C = C} {D = D} {Q = Position E}
 
         from-shape : ⟦ C ⟧ (⟦ D ⟧ (Shape E)) → ⟦ Comp C D ⟧ (Shape E)
         from-shape = CC.to-∘ C D
 
-        from-pos : { sCDE : ⟦ C ⟧ (⟦ D ⟧ (Shape E)) }
-          → ◇ (Comp C D) (Position E) (from-shape sCDE)
-          → ◇ C (◇ D (Position E)) sCDE
-        from-pos {sCDE} (mk◇ (mk◇ (pc , pd) , pe)) = mk◇ (pc , mk◇ (pd , pe))
+        from-pos = ◇-assocʳ {C = C} {D = D} {Q = Position E}
 
         assoc⇒ = to-shape ▷ to-pos
         assoc⇐ = from-shape ▷ from-pos
 
         iso₁ : assoc⇒ CM.∘ assoc⇐ ≈ CM.id (Comp C (Comp D E))
-        iso₁ = with≡ _ _ (λ _ → P.refl)
+        iso₁ = with≡ _ _ (λ _ → ≡.refl)
 
         iso₂ : assoc⇐ CM.∘ assoc⇒ ≈ CM.id (Comp (Comp C D) E)
-        iso₂ = with≡ _ _ (λ _ → P.refl)
+        iso₂ = with≡ _ _ (λ _ → ≡.refl)
     
     -- TODO : triangle and pentagon equalities
