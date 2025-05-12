@@ -78,12 +78,12 @@ module WithK {Con : Container s p} (actionInv : ActionInv Con) where
   -- AxiomK
   ϕleft-≡-natural : ∀ {x y : S}
     → (x≡y : x ≡ y) → (z : S)
-    → (lift≡ x≡y ∘ ϕleft x z) ≗ (ϕleft y z ∘ lift≡ (P.cong (_· z) x≡y))
+    → (lift≡ x≡y ∘ ϕleft) ≗ (ϕleft ∘ lift≡ (P.cong (_· z) x≡y))
   ϕleft-≡-natural P.refl _ p = P.refl
   
   -- AxiomK
   ϕleft-id' : ∀ (x : S) {y : S} (y≡ε : y ≡ ε)
-    → ϕleft x y ≗ lift≡ (P.trans (P.cong (x ·_) y≡ε) (identityʳ x))
+    → ϕleft ≗ lift≡ (P.trans (P.cong (x ·_) y≡ε) (identityʳ x))
   ϕleft-id' x P.refl = ϕleft-id x
 
 module _ {Con : Container s p} (actionInv : ActionInv Con) where
@@ -108,21 +108,21 @@ module _ {Con : Container s p} (actionInv : ActionInv Con) where
       ∎
     
     ϕx→xy : P x → P (x · y)
-    ϕx→xy = ϕleft (x · y) y' ∘ lift≡' xyy⁻¹≡x
+    ϕx→xy = ϕleft ∘ lift≡' xyy⁻¹≡x
     
     ϕxy→x : P (x · y) → P x
-    ϕxy→x = ϕleft x y
+    ϕxy→x = ϕleft
     
     ϕleft-inverse-l : Inverseˡ _≡_ _≡_ ϕxy→x ϕx→xy
     ϕleft-inverse-l {p} {q} P.refl =
       begin
         ϕxy→x (ϕx→xy p)
       ≡⟨⟩
-        ϕleft x y (ϕleft (x · y) y' (lift≡ x≡xyy⁻¹ p))
+        ϕleft (ϕleft (lift≡ x≡xyy⁻¹ p))
       ≡⟨ ϕleft-homo x y y' _ ⟩
-        ϕleft x (y · y') (lift≡ (assoc x y y') (lift≡ x≡xyy⁻¹ p))
-      ≡⟨ P.cong (ϕleft _ _) (P.subst-subst {P = P} x≡xyy⁻¹) ⟩
-        ϕleft x (y · y') (lift≡ x≡x·yy⁻¹ p)
+        ϕleft (lift≡ (assoc x y y') (lift≡ x≡xyy⁻¹ p))
+      ≡⟨ P.cong ϕleft (P.subst-subst {P = P} x≡xyy⁻¹) ⟩
+        ϕleft (lift≡ x≡x·yy⁻¹ p)
       ≡⟨ ϕleft-id' x (inverseʳ y) _ ⟩
         lift≡ x·yy⁻¹≡x (lift≡ x≡x·yy⁻¹ p)
       ≡⟨ P.subst-subst {P = P} x≡x·yy⁻¹ ⟩
@@ -142,13 +142,13 @@ module _ {Con : Container s p} (actionInv : ActionInv Con) where
       begin
         ϕx→xy (ϕxy→x p)
       ≡⟨⟩
-        ϕleft (x · y) y' (lift≡ x≡xyy⁻¹ (ϕleft x y p))
-      ≡⟨ P.cong (ϕleft _ _) (ϕleft-≡-natural x≡xyy⁻¹ y p) ⟩
-        ϕleft (x · y) y' (ϕleft ((x · y) · y') y (lift≡ xy≡xyy⁻¹y p))
+        ϕleft (lift≡ x≡xyy⁻¹ (ϕleft p))
+      ≡⟨ P.cong ϕleft (ϕleft-≡-natural x≡xyy⁻¹ y p) ⟩
+        ϕleft (ϕleft (lift≡ xy≡xyy⁻¹y p))
       ≡⟨ ϕleft-homo (x · y) y' y _ ⟩
-        ϕleft (x · y) (y' · y) (lift≡ (assoc _ _ _) (lift≡ xy≡xyy⁻¹y p))
-      ≡⟨ P.cong (ϕleft _ _) (P.subst-subst {P = P} (P.cong (_· y) x≡xyy⁻¹)) ⟩
-        ϕleft (x · y) (y' · y) (lift≡ xy≡xy·y⁻¹y p)
+        ϕleft (lift≡ (assoc _ _ _) (lift≡ xy≡xyy⁻¹y p))
+      ≡⟨ P.cong ϕleft (P.subst-subst {P = P} (P.cong (_· y) x≡xyy⁻¹)) ⟩
+        ϕleft (lift≡ xy≡xy·y⁻¹y p)
       ≡⟨ ϕleft-id' (x · y) (inverseˡ y) (lift≡ xy≡xy·y⁻¹y p) ⟩
         lift≡ xy·y⁻¹y≡xy (lift≡ xy≡xy·y⁻¹y p)
       ≡⟨ P.subst-subst {P = P} xy≡xy·y⁻¹y ⟩

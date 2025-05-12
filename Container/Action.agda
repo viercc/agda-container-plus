@@ -33,18 +33,18 @@ record RawAction (Con : Container s p) : Set (s ⊔ p) where
   field 
     _·_ : Op₂ S
     ε : S
-    ϕleft : (x y : S) → P (x · y) → P x
-    ϕright : (x y : S) → P (x · y) → P y
+    ϕleft : {x y : S} → P (x · y) → P x
+    ϕright : {x y : S} → P (x · y) → P y
   
   instance
     rawMonoid : RawMonoid s s
     rawMonoid = record { Carrier = S; _≈_ = _≡_; _∙_ = _·_; ε = ε }
   
-  ϕmid : (x y z : S) → P (x · y · z) → P y
-  ϕmid x y z = ϕright x y ∘ ϕleft (x · y) z
+  ϕmid : {x y z : S} → P (x · y · z) → P y
+  ϕmid = ϕright ∘ ϕleft
   
-  ϕmid' : (x y z : S) → P (x · (y · z)) → P y
-  ϕmid' x y z = ϕleft y z ∘ ϕright x (y · z)
+  ϕmid' : {x y z : S} → P (x · (y · z)) → P y
+  ϕmid' = ϕleft ∘ ϕright
 
 -- Equivalence relation defined as Pointwise ≡
 infixl 3 _≗_
@@ -76,18 +76,18 @@ record IsAction (Con : Container s p) (raw : RawAction Con) : Set (s ⊔ p) wher
   lift≡' eq = P.subst P (P.sym eq)
   
   field
-    ϕleft-id : (x : S) → ϕleft x ε ≗ lift≡ (identityʳ x)
+    ϕleft-id : (x : S) → ϕleft ≗ lift≡ (identityʳ x)
     
-    ϕright-id : (x : S) → ϕright ε x ≗ lift≡ (identityˡ x)
+    ϕright-id : (x : S) → ϕright ≗ lift≡ (identityˡ x)
     
     ϕleft-homo : (x y z : S)
-      → ϕleft x y ∘ ϕleft (x · y) z ≗ ϕleft x (y · z) ∘ lift≡ (assoc x y z)
+      → ϕleft ∘ ϕleft ≗ ϕleft ∘ lift≡ (assoc x y z)
     
     ϕright-homo : (x y z : S)
-      → ϕright y z ∘ ϕright x (y · z) ≗ ϕright (x · y) z ∘ lift≡' (assoc x y z)
+      → ϕright ∘ ϕright ≗ ϕright ∘ lift≡' (assoc x y z)
     
     ϕinterchange : (x y z : S)
-      → ϕmid x y z ≗ ϕmid' x y z ∘ lift≡ (assoc x y z)
+      → ϕright ∘ ϕleft ≗ ϕleft ∘ ϕright ∘ lift≡ (assoc x y z)
 
 record Action (Con : Container s p) : Set (s ⊔ p) where
   field

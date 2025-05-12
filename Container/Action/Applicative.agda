@@ -52,7 +52,7 @@ module _ {Con : Container s p} (raw : RawAction Con) where
       pure a = (ε , const a)
 
       _<*>_ : ⟦ Con ⟧ (A → B) → ⟦ Con ⟧ A → ⟦ Con ⟧ B
-      _<*>_ (x , f) (y , g) = (x · y , λ (i : P (x · y)) → f (ϕleft x y i) (g (ϕright x y i)))
+      _<*>_ (x , f) (y , g) = (x · y , λ (i : P (x · y)) → f (ϕleft i) (g (ϕright i)))
 
   makeRawApplicative : (e : Level) → RawApplicative {f = e} (⟦ Con ⟧)
   makeRawApplicative e = record {applicativeImpl e}
@@ -72,14 +72,14 @@ module _ {Con : Container s p} (action : Action Con) where
     ≡-cong₃ f P.refl P.refl P.refl = P.refl
 
     module _ (x y z : S) where
-      ϕright-homo' : ϕright y z ∘ ϕright x (y · z) ∘ lift≡ (assoc x y z) ≗ ϕright (x · y) z
+      ϕright-homo' : ϕright ∘ ϕright ∘ lift≡ (assoc x y z) ≗ ϕright
       ϕright-homo' p =
         begin
-          ϕright y z (ϕright x (y · z) (lift≡ eq p))
+          ϕright (ϕright (lift≡ eq p))
         ≡⟨ ϕright-homo x y z (lift≡ eq p) ⟩
-          ϕright (x · y) z (lift≡' eq (lift≡ eq p))
-        ≡⟨ P.cong (ϕright _ _) (P.subst-sym-subst eq) ⟩
-          ϕright (x · y) z p
+          ϕright (lift≡' eq (lift≡ eq p))
+        ≡⟨ P.cong ϕright (P.subst-sym-subst eq) ⟩
+          ϕright p
         ∎
         where
           open P.≡-Reasoning
@@ -99,13 +99,9 @@ module _ {Con : Container s p} (action : Action Con) where
       
       ap-cong : ∀ {u₁ u₂ : F (A → B)} {v₁ v₂ : F A}
         → (u₁ ≈ u₂) → (v₁ ≈ v₂) → (u₁ <*> v₁ ≈ u₂ <*> v₂)
-      ap-cong {u₁ = x , f1} {u₂ = _ , f2} {v₁ = y , g1} {v₂ = _ , g2} (Pw P.refl f≗) (Pw P.refl g≗) =
-        let
-          fg≗ p =
-            P.trans
-              (P.cong-app (f≗ (ϕleft x y p)) _)
-              (P.cong (f2 (ϕleft x y p)) (g≗ (ϕright x y p)))           
-        in Pw P.refl fg≗
+      ap-cong {u₁ = x , _} {v₁ = y , _} (Pw P.refl f≗) (Pw P.refl g≗) = Pw P.refl fg≗
+        where
+          fg≗ = λ (p : P (x · y)) → P.cong₂ (_$_) (f≗ (ϕleft p)) (g≗ (ϕright p)) 
 
       ap-map : ∀ (f : A → B) (v : F A) → pure f <*> v ≈ f <$> v
       ap-map f (y , g) = Pw (identityˡ y) (λ p → P.cong (f ∘ g) (ϕright-id y p))
