@@ -1,6 +1,6 @@
 {-# OPTIONS --without-K --safe #-}
 
-module Container.Action where
+module Container.Algebra.Action where
 
 open import Level
 

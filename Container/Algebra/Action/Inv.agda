@@ -1,6 +1,6 @@
 {-# OPTIONS --safe #-}
 
-module Container.Action.Inv where
+module Container.Algebra.Action.Inv where
 
 open import Level
 
@@ -28,7 +28,7 @@ import Data.Container.Relation.Binary.Equality.Setoid as CSetoid
 
 open import Algebra using (Op₁; Op₂; RawMonoid; IsMonoid; Monoid; RawGroup; IsGroup; Group)
 
-open import Container.Action
+open import Container.Algebra.Action
 
 -- Container action by group is group action, hence are permutations
 

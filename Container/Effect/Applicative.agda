@@ -1,6 +1,6 @@
 {-# OPTIONS --without-K --safe #-}
 
-module Container.Action.Applicative where
+module Container.Effect.Applicative where
 
 open import Level
 
@@ -29,8 +29,8 @@ open import Effect.Applicative
 open import Effect.Functor.Law
 open import Effect.Applicative.Law
 
-open import Container.Action
-open import Container.Functor
+open import Container.Algebra.Action
+open import Container.Effect.Functor
 
 private
   variable

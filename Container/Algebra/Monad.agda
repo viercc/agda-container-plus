@@ -1,6 +1,6 @@
 {-# OPTIONS --without-K --safe #-}
 
-module Container.Monad where
+module Container.Algebra.Monad where
 
 open import Level
 

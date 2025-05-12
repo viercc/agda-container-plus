@@ -1,6 +1,6 @@
 {-# OPTIONS --without-K --safe #-}
 
-module Container.Functor where
+module Container.Effect.Functor where
 
 open import Level
 
