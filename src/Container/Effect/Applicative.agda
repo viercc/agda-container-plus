@@ -125,43 +125,17 @@ module _ {Con : Container s p} (action : Action Con) where
   makeIsApplicative e = record{
       isApplicativeImpl e renaming (ap-map to map)
     }
-
-{-
-
-rawActionFromApplicative⟦_,_⟧ :
-  (Con : Container s p)
-  → RawApplicative {f = p} ⟦ Con ⟧
-  → RawAction Con
-rawActionFromApplicative⟦_,_⟧ {s = s} {p = p} Con raw = record{rawAction} where
-  open RawApplicative raw
-  open Prod using (_,_)
   
-  S : Set s
-  S = Shape Con
+  makeApplicative : (e : Level) → Applicative {ℓ = e} ⟦ Con ⟧
+  makeApplicative e = record {
+       isApplicative = makeIsApplicative e
+    }
 
-  P : S → Set p
-  P = Position Con
-  
-  data UnitP : Set p where
-    tp : UnitP
-  
-  module rawAction where
-    ε : S
-    ε = Prod.proj₁ (pure tp)
-    
-    _·_ : Op₂ S
-    _·_ x y = Prod.proj₁ ((x , \_ → id) <*> (y , \_ → tp))
-    
-    -- This doesn't type check, because it implicitly assumes
-    --
-    --    Prod.proj₁ ((x , f) <*> (y , g))
-    --
-    -- is irrelevant of the choice of f, g.
-
-    ϕleft : (x y : S) → P (x · y) → P x
-    ϕleft x y pxy = Prod.proj₂ ((x , \px _ → px) <*> (y , \py → py)) pxy
-
-    ϕright : (x y : S) → P (x · y) → P y
-    ϕright x y pxy = Prod.proj₂ ((x , \_ py → py) <*> (y , \py → py)) pxy
-
--} 
+-- Given an Applicative instance on ⟦ Con ⟧ with
+-- the canonical Functor instance as its "superclass",
+-- extract Action out of Applicative. 
+extractAction : {Con : Container s p}
+  → (applicative : Applicative {ℓ = p} ⟦ Con ⟧)
+  → (Applicative.functor applicative ≡ makeFunctor Con p)
+  → Action Con
+extractAction {Con = C} applicative ≡.refl = _

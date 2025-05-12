@@ -53,3 +53,5 @@ module _ (Con : Container s p) where
   makeIsFunctor : (e : Level) → IsFunctor {ℓ = e} ⟦ Con ⟧ (makeRawFunctor e)
   makeIsFunctor e = record {isFunctor e}
  
+  makeFunctor : (e : Level) → Functor {ℓ = e} ⟦ Con ⟧
+  makeFunctor e = record { isFunctor = makeIsFunctor e }
