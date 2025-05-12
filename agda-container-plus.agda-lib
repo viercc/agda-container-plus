@@ -1,0 +1,3 @@
+name: agda-container-plus
+depend: standard-library
+include: ./src
