@@ -42,15 +42,15 @@ module _ (Con : Container s p) where
       isEquivalence : {A : Set e} → IsEquivalence (_≈_ {A = A})
       isEquivalence {A} = CSetoid.isEquivalence (P.setoid A) Con
 
-      map-cong : ∀  {A B : Set e} (f : A → B) {u₁ u₂ : ⟦ Con ⟧ A} → (u₁ ≈ u₂) → (f <$> u₁ ≈ f <$> u₂)
-      map-cong f (Pw s≡ pos≗) = Pw s≡ (λ p → P.cong f (pos≗ p))
+      <$>-cong : ∀  {A B : Set e} (f : A → B) {u₁ u₂ : ⟦ Con ⟧ A} → (u₁ ≈ u₂) → (f <$> u₁ ≈ f <$> u₂)
+      <$>-cong f (Pw s≡ pos≗) = Pw s≡ (λ p → P.cong f (pos≗ p))
 
-      map-id : ∀ {A : Set e} (x : ⟦ Con ⟧ A) → (id <$> x ≈ x)
-      map-id {A = A} x = ContProp.map-identity (P.setoid A) x
+      <$>-id : ∀ {A : Set e} (x : ⟦ Con ⟧ A) → (id <$> x ≈ x)
+      <$>-id {A = A} x = ContProp.map-identity (P.setoid A) x
 
-      map-∘  : ∀ {A B C : Set e} (f : B → C) (g : A → B) (x : ⟦ Con ⟧ A)
+      <$>-∘  : ∀ {A B C : Set e} (f : B → C) (g : A → B) (x : ⟦ Con ⟧ A)
         → (f <$> (g <$> x) ≈ (f ∘ g) <$> x)
-      map-∘ {C = C} f g x = ContProp.map-compose (P.setoid C) f g x
+      <$>-∘ {C = C} f g x = ContProp.map-compose (P.setoid C) f g x
 
   makeIsFunctor : (e : Level) → IsFunctor {ℓ = e} ⟦ Con ⟧ (makeRawFunctor e)
   makeIsFunctor e = record {isFunctor e}

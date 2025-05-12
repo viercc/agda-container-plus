@@ -23,8 +23,8 @@ record IsFunctor (F : Set ℓ → Set ℓ′) (raw : RawFunctor F) : Set (suc (�
     _≈_ : Rel (F A) ℓ′
     instance isEquivalence : ∀ {A : Set ℓ} → IsEquivalence (_≈_ {A = A})
     
-    map-cong : ∀ (f : A → B) {u₁ u₂ : F A} → (u₁ ≈ u₂) → (f <$> u₁ ≈ f <$> u₂)
+    <$>-cong : ∀ (f : A → B) {u₁ u₂ : F A} → (u₁ ≈ u₂) → (f <$> u₁ ≈ f <$> u₂)
     
-    map-id : ∀ (x : F A) → (id <$> x ≈ x)
-    map-∘  : ∀ (f : B → C) (g : A → B) (x : F A)
+    <$>-id : ∀ (x : F A) → (id <$> x ≈ x)
+    <$>-∘  : ∀ (f : B → C) (g : A → B) (x : F A)
       → (f <$> (g <$> x) ≈ (f ∘ g) <$> x)

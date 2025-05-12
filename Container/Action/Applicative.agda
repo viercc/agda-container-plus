@@ -5,7 +5,7 @@ module Container.Action.Applicative where
 open import Level
 
 open import Function.Base using (case_of_)
-open import Function using (_∘_; id; _$_; const)
+open import Function using (_∘_; _∘′_; id; _$_; const)
 
 import Data.Product as Prod
 
@@ -97,24 +97,24 @@ module _ {Con : Container s p} (action : Action Con) where
       F : Set e → Set (s ⊔ p ⊔ e)
       F = ⟦ Con ⟧
       
-      ap-cong : ∀ {u₁ u₂ : F (A → B)} {v₁ v₂ : F A}
+      <*>-cong : ∀ {u₁ u₂ : F (A → B)} {v₁ v₂ : F A}
         → (u₁ ≈ u₂) → (v₁ ≈ v₂) → (u₁ <*> v₁ ≈ u₂ <*> v₂)
-      ap-cong {u₁ = x , _} {v₁ = y , _} (Pw P.refl f≗) (Pw P.refl g≗) = Pw P.refl fg≗
+      <*>-cong {u₁ = x , _} {v₁ = y , _} (Pw P.refl f≗) (Pw P.refl g≗) = Pw P.refl fg≗
         where
           fg≗ = λ (p : P (x · y)) → P.cong₂ (_$_) (f≗ (ϕleft p)) (g≗ (ϕright p)) 
 
       ap-map : ∀ (f : A → B) (v : F A) → pure f <*> v ≈ f <$> v
       ap-map f (y , g) = Pw (identityˡ y) (λ p → P.cong (f ∘ g) (ϕright-id y p))
 
-      ap-homomorphism : ∀ (f : A → B) (x : A) → pure f <*> pure x ≈ pure (f x)
-      ap-homomorphism f x = Pw (identityˡ ε) (λ p → P.refl)
+      homomorphism : ∀ (f : A → B) (x : A) → pure f <*> pure x ≈ pure (f x)
+      homomorphism f x = Pw (identityˡ ε) (λ p → P.refl)
 
-      ap-interchange : ∀ (u : F (A → B)) (y : A) → u <*> pure y ≈ (λ f → f y) <$> u
-      ap-interchange (x , f) y = Pw (identityʳ x) (λ p → P.cong (λ q → f q y) (ϕleft-id x p))
+      interchange : ∀ (u : F (A → B)) (y : A) → u <*> pure y ≈ (λ f → f y) <$> u
+      interchange (x , f) y = Pw (identityʳ x) (λ p → P.cong (λ q → f q y) (ϕleft-id x p))
 
-      ap-composition : ∀ (u : F (B → C)) (v : F (A → B)) (w : F A)
-        → comp <$> u <*> v <*> w ≈ u <*> (v <*> w)
-      ap-composition (x , f) (y , g) (z , h) =
+      composition : ∀ (u : F (B → C)) (v : F (A → B)) (w : F A)
+        → _∘′_ <$> u <*> v <*> w ≈ u <*> (v <*> w)
+      composition (x , f) (y , g) (z , h) =
         Pw (assoc x y z) fgh-equality
         where          
           fgh-equality : _
@@ -125,7 +125,9 @@ module _ {Con : Container s p} (action : Action Con) where
               (P.sym (ϕright-homo' x y z p))
 
   makeIsApplicative : (e : Level) → IsApplicative ⟦ Con ⟧ (makeRawApplicative rawAction e)
-  makeIsApplicative e = record{ isApplicativeImpl e }
+  makeIsApplicative e = record{
+      isApplicativeImpl e renaming (ap-map to map)
+    }
 
 {-
 

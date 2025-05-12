@@ -12,7 +12,7 @@ import Relation.Binary.PropositionalEquality as P
 open import Relation.Binary.PropositionalEquality
     using () renaming (_≡_ to infix 3 _≡_)
 
-open import Function using (_∘_; id; _$_)
+open import Function using (_∘′_; id; _$_)
 open import Effect.Functor
 open import Effect.Functor.Law
 open import Effect.Applicative
@@ -42,22 +42,22 @@ module properties (F : Set ℓ → Set ℓ′) (raw : RawApplicative F) (isAppli
   
   zipWith-cong : ∀ {A B C : Set ℓ} (f : A → B → C) {u₁ u₂ : F A} {v₁ v₂ : F B}
     → (u₁ ≈ u₂) → (v₁ ≈ v₂) → (zipWith f u₁ v₁ ≈ zipWith f u₂ v₂)
-  zipWith-cong f {u₁} {u₂} {v₁} {v₂} u≈ v≈ = ap-cong (map-cong f u≈) v≈
+  zipWith-cong f {u₁} {u₂} {v₁} {v₂} u≈ v≈ = <*>-cong (<$>-cong f u≈) v≈
 
-  ap-cong₁ : ∀ {A} {B} {u₁ u₂ : F (A → B)} {v : F A} → (u₁ ≈ u₂) → (u₁ <*> v ≈ u₂ <*> v)
-  ap-cong₁ u≈ = ap-cong u≈ refl
+  <*>-cong₁ : ∀ {A} {B} {u₁ u₂ : F (A → B)} {v : F A} → (u₁ ≈ u₂) → (u₁ <*> v ≈ u₂ <*> v)
+  <*>-cong₁ u≈ = <*>-cong u≈ refl
 
-  ap-cong₂ : ∀ {A} {B} {u : F (A → B)} {v₁ v₂ : F A} → (v₁ ≈ v₂) → (u <*> v₁ ≈ u <*> v₂)
-  ap-cong₂ v≈ = ap-cong refl v≈
+  <*>-cong₂ : ∀ {A} {B} {u : F (A → B)} {v₁ v₂ : F A} → (v₁ ≈ v₂) → (u <*> v₁ ≈ u <*> v₂)
+  <*>-cong₂ v≈ = <*>-cong refl v≈
 
   -- convenient equalities
-  ap-identity : ∀ {A} (v : F A) → pure id <*> v ≈ v
-  ap-identity v =
+  identity : ∀ {A} (v : F A) → pure id <*> v ≈ v
+  identity v =
     begin
       pure id <*> v
-    ≈⟨ ap-map id v ⟩
+    ≈⟨ map id v ⟩
       id <$> v
-    ≈⟨ map-id v ⟩
+    ≈⟨ <$>-id v ⟩
       v
     ∎
     where open ≈-Reasoning
@@ -66,9 +66,9 @@ module properties (F : Set ℓ → Set ℓ′) (raw : RawApplicative F) (isAppli
   pure-naturality f x =
     begin
       f <$> pure x
-    ≈⟨ ap-map f (pure x) ⟨
+    ≈⟨ map f (pure x) ⟨
       pure f <*> pure x
-    ≈⟨ ap-homomorphism f x ⟩
+    ≈⟨ homomorphism f x ⟩
       pure (f x)
     ∎
     where
@@ -79,9 +79,9 @@ module properties (F : Set ℓ → Set ℓ′) (raw : RawApplicative F) (isAppli
   zipWith-pure₁ f x v =
     begin
       f <$> pure x <*> v
-    ≈⟨ ap-cong₁ (pure-naturality f x) ⟩
+    ≈⟨ <*>-cong₁ (pure-naturality f x) ⟩
       pure (f x) <*> v
-    ≈⟨ ap-map (f x) v ⟩
+    ≈⟨ map (f x) v ⟩
       f x <$> v
     ∎
     where open ≈-Reasoning
@@ -91,37 +91,37 @@ module properties (F : Set ℓ → Set ℓ′) (raw : RawApplicative F) (isAppli
   zipWith-pure₂ f u y =
     begin
       (f <$> u) <*> pure y
-    ≈⟨ ap-interchange (f <$> u) y ⟩
+    ≈⟨ interchange (f <$> u) y ⟩
       (λ r → r y) <$> (f <$> u)
-    ≈⟨ map-∘ (λ r → r y) f u ⟩
+    ≈⟨ <$>-∘ (λ r → r y) f u ⟩
       (λ x → f x y) <$> u
     ∎
     where open ≈-Reasoning
   
-  ap-naturality₁ : ∀ {A B C : Set ℓ} (f : B → C) (u : F (A → B)) (v : F A)
-      → f <$> (u <*> v) ≈ comp f <$> u <*> v
-  ap-naturality₁ f u v =
+  naturality₁ : ∀ {A B C : Set ℓ} (f : B → C) (u : F (A → B)) (v : F A)
+      → f <$> (u <*> v) ≈ f ∘′_ <$> u <*> v
+  naturality₁ f u v =
     begin
       f <$> (u <*> v)
-    ≈⟨ ap-map f (u <*> v) ⟨
+    ≈⟨ map f (u <*> v) ⟨
       pure f <*> (u <*> v)
-    ≈⟨ ap-composition (pure f) u v ⟨
-      comp <$> pure f <*> u <*> v
-    ≈⟨ ap-cong₁ (zipWith-pure₁ comp f u) ⟩
-      comp f <$> u <*> v
+    ≈⟨ composition (pure f) u v ⟨
+      _∘′_ <$> pure f <*> u <*> v
+    ≈⟨ <*>-cong₁ (zipWith-pure₁ _∘′_ f u) ⟩
+      _∘′_ f <$> u <*> v
     ∎
     where open ≈-Reasoning
   
-  ap-naturality₂ : ∀ {A B C : Set ℓ} (g : A → B) (u : F (B → C)) (v : F A)
-      → (λ f → comp f g) <$> u <*> v ≈ u <*> (g <$> v)
-  ap-naturality₂ g u v =
+  naturality₂ : ∀ {A B C : Set ℓ} (g : A → B) (u : F (B → C)) (v : F A)
+      → (λ f → _∘′_ f g) <$> u <*> v ≈ u <*> (g <$> v)
+  naturality₂ g u v =
     begin
-      (λ f → comp f g) <$> u <*> v
-    ≈⟨ ap-cong₁ (zipWith-pure₂ comp u g) ⟨
-      (comp <$> u) <*> pure g <*> v
-    ≈⟨ ap-composition u (pure g) v ⟩
+      (λ f → _∘′_ f g) <$> u <*> v
+    ≈⟨ <*>-cong₁ (zipWith-pure₂ _∘′_ u g) ⟨
+      (_∘′_ <$> u) <*> pure g <*> v
+    ≈⟨ composition u (pure g) v ⟩
       u <*> (pure g <*> v)
-    ≈⟨ ap-cong₂ (ap-map g v) ⟩
+    ≈⟨ <*>-cong₂ (map g v) ⟩
       u <*> (g <$> v)
     ∎
     where open ≈-Reasoning
