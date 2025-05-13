@@ -38,12 +38,6 @@ record RawAction (Con : Container s p) : Set (s ⊔ p) where
   instance
     rawMonoid : RawMonoid s s
     rawMonoid = record { Carrier = S; _≈_ = _≡_; _∙_ = _·_; ε = ε }
-  
-  ϕmid : {x y z : S} → P (x · y · z) → P y
-  ϕmid = ϕright ∘ ϕleft
-  
-  ϕmid' : {x y z : S} → P (x · (y · z)) → P y
-  ϕmid' = ϕleft ∘ ϕright
 
 -- Equivalence relation defined as Pointwise ≡
 infixl 3 _≗_
