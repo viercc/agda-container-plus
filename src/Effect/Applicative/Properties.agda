@@ -21,7 +21,7 @@ module properties {ℓ ℓ′} (F : Set ℓ → Set ℓ′) (applicative : Appli
   open Applicative applicative
   open IsEquivalence {{...}}
   module ≈-Reasoning {A : Set ℓ} = Reasoning (setoid A)
-
+  
   -- congruences
 
   pure-cong : ∀ {A} {x y : A} → x ≡ y → pure x ≈ pure y
@@ -100,10 +100,10 @@ module properties {ℓ ℓ′} (F : Set ℓ → Set ℓ′) (applicative : Appli
     where open ≈-Reasoning
   
   naturality₂ : ∀ {A B C : Set ℓ} (g : A → B) (u : F (B → C)) (v : F A)
-      → (λ f → _∘′_ f g) <$> u <*> v ≈ u <*> (g <$> v)
+      → (_∘′ g) <$> u <*> v ≈ u <*> (g <$> v)
   naturality₂ g u v =
     begin
-      (λ f → _∘′_ f g) <$> u <*> v
+      (_∘′ g) <$> u <*> v
     ≈⟨ <*>-cong₁ (zipWith-pure₂ _∘′_ u g) ⟨
       (_∘′_ <$> u) <*> pure g <*> v
     ≈⟨ composition u (pure g) v ⟩
