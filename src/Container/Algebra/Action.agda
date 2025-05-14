@@ -77,7 +77,7 @@ record IsAction (Con : Container s p) (raw : RawAction Con) : Set (s ⊔ p) wher
       → ϕleft ∘ ϕleft ≗ ϕleft ∘ lift≡ (assoc x y z)
     
     ϕright-homo : (x y z : S)
-      → ϕright ∘ ϕright ≗ ϕright ∘ lift≡' (assoc x y z)
+      → ϕright ≗ ϕright ∘ ϕright ∘ lift≡ (assoc x y z)
     
     ϕinterchange : (x y z : S)
       → ϕright ∘ ϕleft ≗ ϕleft ∘ ϕright ∘ lift≡ (assoc x y z)

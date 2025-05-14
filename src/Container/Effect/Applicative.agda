@@ -28,7 +28,7 @@ open import Container.Algebra.Action
 open import Container.Effect.Functor
 
 module Container.Effect.Applicative {s p : Level} {Con : Container s p} where
-
+  
 -- Make RawApplicative out of RawAction
 module _ (raw : RawAction Con) where
   private
@@ -63,20 +63,6 @@ module _ (action : Action Con) where
       → (f x1 y1 z1 ≡ f x2 y2 z2)
     ≡-cong₃ f ≡.refl ≡.refl ≡.refl = ≡.refl
 
-    module _ (x y z : S) where
-      ϕright-homo' : ϕright ∘′ ϕright ∘′ lift≡ (assoc x y z) ≗ ϕright
-      ϕright-homo' p =
-        begin
-          ϕright (ϕright (lift≡ eq p))
-        ≡⟨ ϕright-homo x y z (lift≡ eq p) ⟩
-          ϕright (lift≡' eq (lift≡ eq p))
-        ≡⟨ ≡.cong ϕright (≡.subst-sym-subst eq) ⟩
-          ϕright p
-        ∎
-        where
-          open ≡.≡-Reasoning
-          eq = assoc x y z
-    
     module isApplicativeImpl (e : Level) where
       variable
         A B C : Set e
@@ -114,7 +100,7 @@ module _ (action : Action Con) where
             ≡-cong₃ (λ p₁ p₂ p₃ → f p₁ (g p₂ (h p₃)))
               (ϕleft-homo x y z p)
               (ϕinterchange x y z p)
-              (≡.sym (ϕright-homo' x y z p))
+              (ϕright-homo x y z p)
 
   makeIsApplicative : (e : Level) → IsApplicative ⟦ Con ⟧ _≈_ (makeRawApplicative rawAction e)
   makeIsApplicative e = record{

@@ -229,17 +229,8 @@ module _ (applicative : Applicative ⟦ Con ⟧ _≈_) where
         ϕleft-homo x y z p = ϕassoc x y z p .proj₁
         
         ϕright-homo : (x y z : S)
-          → ϕright ∘ ϕright ≗ ϕright ∘ lift≡' (assoc x y z)
-        ϕright-homo x y z p = begin
-              ϕright (ϕright p)
-            ≡⟨ ≡.cong (ϕright ∘′ ϕright) (≡.subst-subst-sym {P = P} eq) ⟨
-              ϕright (ϕright (lift≡ eq (lift≡' eq p)))
-            ≡⟨ ϕassoc x y z (lift≡' eq p) .proj₂ .proj₂ ⟨
-              ϕright (lift≡' eq p)
-            ∎
-          where
-            open ≡.≡-Reasoning
-            eq = assoc x y z
+          → ϕright ≗ ϕright ∘ ϕright ∘ lift≡ (assoc x y z)
+        ϕright-homo x y z p = ϕassoc x y z p .proj₂ .proj₂
         
         ϕinterchange : (x y z : S)
           → ϕright ∘ ϕleft ≗ ϕleft ∘ ϕright ∘ lift≡ (assoc x y z)
