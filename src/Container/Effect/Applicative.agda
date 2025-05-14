@@ -8,11 +8,14 @@ open import Function using (_∘_; _∘′_; id; _$_; const)
 
 open import Data.Unit.Polymorphic.Base using (⊤; tt)
 open import Data.Product as Prod
-  using (Σ; _,_; proj₁; proj₂)
+  using (Σ; _×_; _,_; proj₁; proj₂)
+  renaming (_,′_ to pair)
+
 open import Data.Product.Properties
-  using (,-injectiveˡ)
+  using (,-injective)
 
 open import Relation.Binary using (Setoid; IsEquivalence)
+import Relation.Binary.Reasoning.Setoid as Reasoning
 open import Relation.Binary.PropositionalEquality as ≡
   using (_≡_)
 
@@ -64,7 +67,6 @@ module _ {Con : Container s p} (raw : RawAction Con) where
 -- Make Applicative (with law) out of Action (with law)
 module _ {Con : Container s p} (action : Action Con) where
   open Action action
-  open Prod using (proj₁; proj₂; _,_)
   
   private
     ≡-cong₃ : ∀ {a e : Level} {X Y Z : Set a} {R : Set e}
@@ -128,12 +130,12 @@ module _ {Con : Container s p} (action : Action Con) where
               (ϕinterchange x y z p)
               (≡.sym (ϕright-homo' x y z p))
 
-  makeIsApplicative : (e : Level) → IsApplicative ⟦ Con ⟧ (makeRawApplicative rawAction e)
+  makeIsApplicative : (e : Level) → IsApplicative ⟦ Con ⟧ _≈_ (makeRawApplicative rawAction e)
   makeIsApplicative e = record{
       isApplicativeImpl e renaming (ap-map to map)
     }
   
-  makeApplicative : (e : Level) → Applicative {ℓ = e} ⟦ Con ⟧
+  makeApplicative : (e : Level) → Applicative {ℓ = e} ⟦ Con ⟧ _≈_
   makeApplicative e = record {
        isApplicative = makeIsApplicative e
     }
@@ -143,104 +145,213 @@ module _ {Con : Container s p} (action : Action Con) where
 ! _ = tt
 
 -- Given an Applicative instance on ⟦ Con ⟧ with
--- the canonical Functor instance as its "superclass",
+-- the same Functor instance,
 -- extract Action out of Applicative. 
-
-extractAction : {Con : Container s p}
-  → (applicative : Applicative {ℓ = p} ⟦ Con ⟧)
-  → (Applicative.functor applicative ≡ makeFunctor Con p)
-  → UIP (Shape Con)
-  → Action Con
-extractAction {s} {p} {Con = Con} applicative ≡.refl uip = record { rawAction = rawAction; isAction = isAction }
-  where
-    open Container Con renaming (Shape to S; Position to P)
-    open Applicative applicative
+module _ {s} {p} {Con : Container s p} (applicative : Applicative ⟦ Con ⟧ _≈_) where
+  open Container Con renaming (Shape to S; Position to P)
+  open Applicative applicative
+  
+  F : Set p → Set (s ⊔ p)
+  F = ⟦ Con ⟧
+  
+  private
+    module ≈-Reasoning {A : Set p} =
+      Reasoning (≈-setoid{Con = Con} A)
+    module props = properties applicative
     open IsEquivalence {{...}}
 
-    module props = properties ⟦ Con ⟧ applicative
-
-    ε : ∀ { A : Set p} { a : A } → S
-    ε {a = a} = proj₁ (pure a)
-
-    ε₀ : S
-    ε₀ = ε {a = tt}
-
-    _·_ : ∀ {A B : Set p} → (x y : S) {f : P x → A → B} {g : P y → A} → S
-    _·_ x y  {f = f} {g = g} = proj₁ ((x , f) <*> (y , g))
-
-    _·₀_ : S → S → S
-    _·₀_ x y = _·_ x y {f = const id} {g = !}
-
-    irrelevant-ε : ∀ {A : Set p} {a : A} → ε₀ ≡ ε {a = a}
-    irrelevant-ε {a = a} = sym (props.pure-naturality ! a) .Pointwise.shape
-
-    irrelevant-· : ∀ {A B : Set p} (x y : S) {f : P x → A → B} {g : P y → A} 
-      → x ·₀ y ≡ _·_ x y {f = f} {g = g}
-    irrelevant-· x y {f = f} {g = g} = sym proof .Pointwise.shape
-      where
-        u = x , f
-        v = y , g
-
-        proof : ! <$> (u <*> v) ≈ (x , const id) <*> (y , const tt)
-        proof = begin
-            ! <$> (u <*> v)
-          ≈⟨ props.naturality₁ ! u v ⟩
-            const ! <$> u <*> v
-          ≈⟨ <*>-cong (<$>-∘ (_∘′ !) (const id) u) refl ⟨
-            (_∘′ !) <$> (const id <$> u) <*> v
-          ≈⟨ props.naturality₂ ! (const id <$> u) v ⟩
-            (const id <$> u) <*> (! <$> v)
-          ≈⟨ refl ⟩
-            ((x , const id) <*> (y , const tt))
-          ∎
-          where open props.≈-Reasoning
+  -- The given applicative instance has "standard" <$>
+  Canonical<$> : Set (s ⊔ suc p)
+  Canonical<$> = ∀ {A B : Set p} {x : S} {f : A -> B} {g : P x → A} →
+    f <$> (x , g) ≈ (x , f ∘′ g)
+  
+  record ExtractedAction : Set (suc (s ⊔ p)) where
+    field
+      rawAction : RawAction Con
     
-    ϕleft : ∀ {x y : S} → P (x ·₀ y) → P x
-    ϕleft {x = x} {y = y} p = proj₂ ((x , const) <*> (y , !)) (≡.subst P (irrelevant-· x y) p)
+    open RawAction rawAction hiding (S; P) public
 
-    ϕright : ∀ {x y : S} → P (x ·₀ y) → P y
-    ϕright {x = x} {y = y} p = proj₂ ((x , const id) <*> (y , id)) (≡.subst P (irrelevant-· x y) p)
-
-    rawAction : RawAction Con
-    rawAction = record { ε = ε₀; _·_ = _·₀_; ϕleft = ϕleft; ϕright = ϕright }
-    
-    module _ where
-      -- (S; ε₀; _·₀_) is a Monoid
-
-      S-identityˡ : ∀ (x : S) → ε₀ ·₀ x ≡ x
-      S-identityˡ x = ≡.trans (≡.cong (_·₀ x) irrelevant-ε) (proof .Pointwise.shape)
-        where
-          proof : pure id <*> (x , !) ≈ (x , !)
-          proof = props.identity _
+    field
+      pure-nf : ∀ {A} {a : A} → pure a ≈ (ε , const a)
+      <*>-nf : ∀ {A B} {x y : S} {f : P x → A → B} {g : P y → A} →
+        (x , f) <*> (y , g) ≈ (x · y , λ p → f (ϕleft p) (g (ϕright p)))
       
-      S-identityʳ : ∀ (x : S) → x ·₀ ε₀ ≡ x
-      S-identityʳ x = interchange (x , const id) tt .Pointwise.shape
+      -- <$>-nf is actually redundant because it follows from the above two -nf
+      -- properties and IsApplicative.
+      -- But we will require <$>-nf to do extractAction below
+      -- to construct ExtractedAction, thus including it here is
+      -- easier than proving it again when using ExtractedAction.
+      <$>-nf : Canonical<$>  
 
-      S-assoc : ∀ (x y z : S) → (x ·₀ y) ·₀ z ≡ x ·₀ (y ·₀ z)
-      S-assoc x y z = ≡.trans (≡.cong (_·₀ z) (irrelevant-· x y)) (proof .Pointwise.shape) 
+  extractAction : Canonical<$> → ExtractedAction
+  extractAction <$>-nf = record {
+      rawAction = rawAction;
+      pure-nf = pure-nf;
+      <*>-nf = <*>-nf;
+      <$>-nf = <$>-nf
+    }
+    where
+      eps : ∀ { A : Set p } (a : A) → S
+      eps a = proj₁ (pure a)
+
+      dot : ∀ {A B : Set p} → (x y : S) (f : P x → A → B) (g : P y → A) → S
+      dot x y f g = proj₁ ((x , f) <*> (y , g))
+
+      ε : S
+      ε = eps tt
+
+      pure-nf : ∀ {A} {a : A} → pure a ≈ (ε , const a)
+      pure-nf {a = a} =
+        begin
+          pure a
+        ≈⟨ props.pure-naturality _ _ ⟨
+          const a <$> pure tt
+        ≈⟨ refl ⟩
+          const a <$> (ε , _)
+        ≈⟨ <$>-nf ⟩
+          (ε , const a)
+        ∎
+        where open ≈-Reasoning
+
+      _·_ : S → S → S
+      _·_ x y = dot x y pair id
+
+      ϕ : ∀ {x y : S} → P (x · y) → P x × P y
+      ϕ {x = x} {y = y} = proj₂ ((x , pair) <*> (y , id))
+      
+      ϕleft : ∀ {x y : S} → P (x · y) → P x
+      ϕleft p = proj₁ (ϕ p)
+
+      ϕright : ∀ {x y : S} → P (x · y) → P y
+      ϕright p = proj₂ (ϕ p)
+
+      <*>-nf : ∀ {A B : Set p} {x y : S} {f : P x → A → B} {g : P y → A} →
+        (x , f) <*> (y , g) ≈ (x · y , λ p → f (ϕleft p) (g (ϕright p)))
+      <*>-nf {x = x} {y = y} {f = f} {g = g} =
+        begin
+          (x , f) <*> (y , g)
+        ≈⟨ props.<*>-cong₂ <$>-nf ⟨
+          (x , f) <*> (g <$> (y , id))
+        ≈⟨ props.naturality₂ _ _ _ ⟨
+          (_∘′ g <$> (x , f)) <*> (y , id)
+        ≈⟨ props.<*>-cong₁ <$>-nf ⟩
+          (x , λ px py → f px (g py)) <*> (y , id)
+        ≈⟨ refl ⟩
+          (x , λ px py → fg (pair px py)) <*> (y , id)
+        ≈⟨ props.<*>-cong₁ <$>-nf ⟨
+          fg ∘′_ <$> (x , pair) <*> (y , id)
+        ≈⟨ props.naturality₁ _ _ _ ⟨
+          fg <$> ((x , pair) <*> (y , id))
+        ≈⟨ refl ⟩
+          fg <$> (x · y , ϕ)
+        ≈⟨ <$>-nf ⟩
+          (x · y , fg ∘′ ϕ)
+        ≈⟨ refl ⟩
+          (x · y , λ p → f (ϕleft p) (g (ϕright p)))
+        ∎
         where
-          u = (x , const id)
-          v = (y , const id)
-          w = (z , !)
+          fg : P x × P y → _
+          fg (px , py) = f px (g py)
+          open ≈-Reasoning
 
-          proof : _∘′_ <$> u <*> v <*> w ≈ u <*> (v <*> w)
-          proof = composition u v w
-
-      open import Algebra.Structures using (IsMonoid; IsSemigroup; IsMagma)
-      open IsMonoid
-      open IsSemigroup
-      open IsMagma
-      S-isMonoid : IsMonoid _≡_ _·₀_ ε₀
-      S-isMonoid .isSemigroup .isMagma .isEquivalence = ≡.isEquivalence
-      S-isMonoid .isSemigroup .isMagma .∙-cong = ≡.cong₂ _
-      S-isMonoid .isSemigroup .assoc = S-assoc
-      S-isMonoid .identity = S-identityˡ , S-identityʳ
-
-    private
+      rawAction : RawAction Con
+      rawAction = record { ε = ε; _·_ = _·_; ϕleft = ϕleft; ϕright = ϕright }
+  
+  reproveIsAction :
+    ∀ (ext : ExtractedAction) (let raw = ext .ExtractedAction.rawAction)
+    → IsAction Con raw
+  reproveIsAction ext = record {isActionImpl}
+    where
       module isActionImpl where
-        isMonoid : IsMonoid _≡_ _·₀_ ε₀
-        isMonoid = S-isMonoid
+        open ExtractedAction ext
 
+        open Pointwise
+
+        open import Function renaming (_∋_ to infix 5 _∋_)
+
+        unfolded-left-id : ∀ (x : S) → F (P x) ∋ (ε · x , λ p → ϕright p) ≈ (x , id)
+        unfolded-left-id x =
+          begin
+            (ε · x , λ p → ϕright p)
+          ≈⟨ <*>-nf ⟨
+            (ε , const id) <*> (x , id)
+          ≈⟨ props.<*>-cong₁ pure-nf ⟨
+            pure id <*> (x , id)
+          ≈⟨ props.identity _ ⟩
+            (x , id)
+          ∎
+          where
+            open ≈-Reasoning
+
+        unfolded-right-id : ∀ (x : S) → F (P x) ∋ (x · ε , ϕleft) ≈ (x , id)
+        unfolded-right-id x =
+          begin
+            (x · ε , λ p → ϕleft p)
+          ≈⟨ <*>-nf ⟨
+            (x , const) <*> (ε , const tt)
+          ≈⟨ props.<*>-cong₂ pure-nf ⟨
+            (x , const) <*> pure tt
+          ≈⟨ interchange _ _ ⟩
+            (λ k → k tt) <$> (x , const)
+          ≈⟨ <$>-nf ⟩
+            (x , id)
+          ∎
+          where
+            open ≈-Reasoning
+
+        unfolded-assoc : ∀ (x y z : S) →
+          F (P x × P y × P z) ∋
+          ((x · y) · z , λ p → ϕleft (ϕleft p) , ϕright (ϕleft p) , ϕright p)
+            ≈
+          (x · (y · z) , λ p → ϕleft p , ϕleft (ϕright p) , ϕright (ϕright p))
+        unfolded-assoc x y z =
+          begin
+            ((x · y) · z , λ p → ϕleft (ϕleft p) , ϕright (ϕleft p) , ϕright p)
+          ≈⟨ lhs ⟨
+            _∘′_ <$> (x , pair) <*> (y , pair) <*> (z , id)
+          ≈⟨ composition (x , pair) (y , pair) (z , id) ⟩
+            (x , pair) <*> ((y , pair) <*> (z , id))
+          ≈⟨ rhs ⟩
+            (x · (y · z) , λ p → ϕleft p , ϕleft (ϕright p) , ϕright (ϕright p))
+          ∎
+          where
+            open ≈-Reasoning
+
+            lhs : F (P x × P y × P z) ∋ _ ≈ _
+            lhs =
+              begin
+                _∘′_ <$> (x , pair) <*> (y , pair) <*> (z , id)
+              ≈⟨ props.<*>-cong₁ (props.<*>-cong₁ <$>-nf) ⟩
+                (x , _) <*> (y , pair) <*> (z , id)
+              ≈⟨ props.<*>-cong₁ <*>-nf ⟩
+                (x · y , _) <*> (z , id)
+              ≈⟨ <*>-nf ⟩
+                ((x · y) · z , λ p → ϕleft (ϕleft p) , ϕright (ϕleft p) , ϕright p)
+              ∎
+            rhs : F (P x × P y × P z) ∋ _ ≈ _
+            rhs =
+              begin
+                (x , pair) <*> ((y , pair) <*> (z , id))
+              ≈⟨ props.<*>-cong₂ <*>-nf ⟩
+                (x , pair) <*> (y · z , _)
+              ≈⟨ <*>-nf ⟩
+                (x · (y · z) , λ p → ϕleft p , ϕleft (ϕright p) , ϕright (ϕright p))
+              ∎
+
+        isMonoid : IsMonoid _≡_ _·_ ε
+        isMonoid = impl
+          where
+            open import Algebra.Structures using (IsMonoid; IsSemigroup; IsMagma)
+            open IsMonoid
+            open IsSemigroup
+            open IsMagma
+            impl : IsMonoid _≡_ _·_ ε
+            impl .isSemigroup .isMagma .isEquivalence = ≡.isEquivalence
+            impl .isSemigroup .isMagma .∙-cong = ≡.cong₂ _
+            impl .isSemigroup .assoc x y z = unfolded-assoc x y z .shape
+            impl .identity .proj₁ x = unfolded-left-id x .shape
+            impl .identity .proj₂ x = unfolded-right-id x .shape
+        
         open IsMonoid isMonoid
 
         lift≡ : {x y : S} → (x ≡ y) → P x → P y
@@ -249,72 +360,38 @@ extractAction {s} {p} {Con = Con} applicative ≡.refl uip = record { rawAction 
         lift≡' : {x y : S} → (x ≡ y) → P y → P x
         lift≡' eq = ≡.subst P (≡.sym eq)
 
-        ϕleft-id : ∀ (x : S) → (p : P (x ·₀ ε₀)) → ϕleft p ≡ lift≡ (identityʳ x) p
-        ϕleft-id x = λ p → begin
-            ϕleft p
-          ≡⟨⟩
-            proj₂ ((x , const) <*> pure tt) (lift≡ irrelevance p)
-          ≡⟨ proof-pos (lift≡ irrelevance p) ⟩
-            lift≡ proof-shape (lift≡ irrelevance p)
-          ≡⟨ ≡.subst-subst irrelevance {p = p} ⟩
-            lift≡ (≡.trans irrelevance proof-shape) p
-          ≡⟨ ≡.cong (λ eq → lift≡ eq p) (uip _ _) ⟩
-            lift≡ (identityʳ x) p
-          ∎
-          where
-            open ≡.≡-Reasoning
-
-            irrelevance : x ·₀ ε₀ ≡ _·_ x ε₀ {f = const} {g = !}
-            irrelevance = irrelevant-· x ε₀
-
-            proof : (x , const) <*> pure tt ≈ (x , id)
-            proof = interchange (x , const) tt
-
-            proof-shape : x · ε₀ ≡ x
-            proof-shape = proof .Pointwise.shape
-
-            proof-pos : ∀ (p : P (x · ε₀)) →
-              proj₂ ((x , const) <*> pure tt) p ≡ lift≡ proof-shape p
-            proof-pos = proof .Pointwise.position
+        ϕleft-id : ∀ (x : S) → (p : P (x · ε)) → ϕleft p ≡ lift≡ (identityʳ x) p
+        ϕleft-id x = unfolded-right-id x .position
 
         ϕright-id : (x : S) → ϕright ≗ lift≡ (identityˡ x)
-        ϕright-id x = λ p → begin
-            ϕright p
-          ≡⟨⟩
-            proj₂ (pure id <*> (x , id)) (lift≡ irrelevance p)
-          ≡⟨ proof-pos (lift≡ irrelevance p) ⟩
-            lift≡ proof-shape (lift≡ irrelevance p)
-          ≡⟨ ≡.subst-subst irrelevance {p = p} ⟩
-            lift≡ (≡.trans irrelevance proof-shape) p
-          ≡⟨ ≡.cong (λ eq → lift≡ eq p) (uip _ _) ⟩
-            lift≡ (identityˡ x) p
-          ∎
-          where
-            open ≡.≡-Reasoning
-
-            proof : pure id <*> (x , id) ≈ (x , id)
-            proof = props.identity (x , id)
-
-            proof-shape : ε · x ≡ x
-            proof-shape = proof .Pointwise.shape
-
-            proof-pos : ∀ (p : P (ε · x)) →
-              proj₂ (pure id <*> (x , id)) p ≡ lift≡ proof-shape p
-            proof-pos = proof .Pointwise.position
-
-            irrelevance = ≡.trans (≡.cong (_·₀ x) irrelevant-ε) (irrelevant-· ε x)
+        ϕright-id x = unfolded-left-id x .position
         
+        ϕassoc : (x y z : S) (p : P ((x · y) · z))
+          → (let eq = assoc x y z)
+          → (ϕleft (ϕleft p) ≡ ϕleft (lift≡ eq p))
+           × (ϕright (ϕleft p) ≡ ϕleft (ϕright (lift≡ eq p)))
+           × (ϕright p ≡ ϕright (ϕright (lift≡ eq p)))
+        ϕassoc x y z p = Prod.map₂ ,-injective (,-injective eq123)
+          where
+            eq123 = unfolded-assoc x y z .position p 
+
         ϕleft-homo : (x y z : S)
           → ϕleft ∘ ϕleft ≗ ϕleft ∘ lift≡ (assoc x y z)
-        ϕleft-homo x y z p = _
+        ϕleft-homo x y z p = ϕassoc x y z p .proj₁
         
         ϕright-homo : (x y z : S)
           → ϕright ∘ ϕright ≗ ϕright ∘ lift≡' (assoc x y z)
-        ϕright-homo x y z p = _
+        ϕright-homo x y z p = begin
+              ϕright (ϕright p)
+            ≡⟨ ≡.cong (ϕright ∘′ ϕright) (≡.subst-subst-sym {P = P} eq) ⟨
+              ϕright (ϕright (lift≡ eq (lift≡' eq p)))
+            ≡⟨ ϕassoc x y z (lift≡' eq p) .proj₂ .proj₂ ⟨
+              ϕright (lift≡' eq p)
+            ∎
+          where
+            open ≡.≡-Reasoning
+            eq = assoc x y z
         
         ϕinterchange : (x y z : S)
           → ϕright ∘ ϕleft ≗ ϕleft ∘ ϕright ∘ lift≡ (assoc x y z)
-        ϕinterchange x y z p = _
-    
-    isAction : IsAction Con rawAction
-    isAction = record {isActionImpl}
+        ϕinterchange x y z p = ϕassoc x y z p .proj₂ .proj₁

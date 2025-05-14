@@ -6,9 +6,11 @@ open import Level
 
 open import Function using (_∘_; id; _$_)
 
-open import Relation.Binary using (Rel; IsEquivalence)
+open import Relation.Binary using (Rel; IsEquivalence; Setoid)
 open import Relation.Binary.PropositionalEquality as ≡
     using (_≡_)
+
+open import Data.Product as Prod using (proj₁; proj₂; _,_)
 
 open import Data.Container.Core
 import Data.Container.Properties as ContProp
@@ -24,21 +26,27 @@ private
   variable
     s p : Level
 
-module _ (Con : Container s p) where
+module _ {Con : Container s p} where
+  infix 3 _≈_
 
+  _≈_ : ∀ {e} {A : Set e} → Rel (⟦ Con ⟧ A) (s ⊔ p ⊔ e)
+  _≈_ {A = A} = CSetoid.Eq (≡.setoid A) Con
+  
+  instance
+    ≈-isEquivalence : {e : Level} {A : Set e} → IsEquivalence (_≈_ {A = A})
+    ≈-isEquivalence {A = A} = CSetoid.isEquivalence (≡.setoid A) Con
+  
+  ≈-setoid : {e : Level} (A : Set e) → Setoid (s ⊔ p ⊔ e) (s ⊔ p ⊔ e)
+  ≈-setoid A = CSetoid.setoid (≡.setoid A) Con
+
+module _ (Con : Container s p) where
+  
   makeRawFunctor : (e : Level) → RawFunctor {ℓ = e} (⟦ Con ⟧) 
   makeRawFunctor e = record { _<$>_ = map }
-
+  
   private 
     module isFunctor (e : Level) where
       open RawFunctor (makeRawFunctor e)
-      infix 3 _≈_
-      
-      _≈_ : ∀ {A : Set e} → Rel (⟦ Con ⟧ A) (s ⊔ p ⊔ e)
-      _≈_ {A} = CSetoid.Eq (≡.setoid A) Con
-
-      isEquivalence : {A : Set e} → IsEquivalence (_≈_ {A = A})
-      isEquivalence {A} = CSetoid.isEquivalence (≡.setoid A) Con
 
       <$>-cong : ∀  {A B : Set e} (f : A → B) {u₁ u₂ : ⟦ Con ⟧ A} → (u₁ ≈ u₂) → (f <$> u₁ ≈ f <$> u₂)
       <$>-cong f (Pw s≡ pos≗) = Pw s≡ (λ p → ≡.cong f (pos≗ p))
@@ -50,8 +58,8 @@ module _ (Con : Container s p) where
         → (f <$> (g <$> x) ≈ (f ∘ g) <$> x)
       <$>-∘ {C = C} f g x = ContProp.map-compose (≡.setoid C) f g x
 
-  makeIsFunctor : (e : Level) → IsFunctor {ℓ = e} ⟦ Con ⟧ (makeRawFunctor e)
+  makeIsFunctor : (e : Level) → IsFunctor {ℓ = e} ⟦ Con ⟧ _≈_ (makeRawFunctor e)
   makeIsFunctor e = record {isFunctor e}
  
-  makeFunctor : (e : Level) → Functor {ℓ = e} ⟦ Con ⟧
+  makeFunctor : (e : Level) → Functor {ℓ = e} ⟦ Con ⟧ _≈_
   makeFunctor e = record { isFunctor = makeIsFunctor e }
