@@ -17,13 +17,18 @@ open import Effect.Functor.Law
 open import Effect.Applicative
 open import Effect.Applicative.Law
 
-module properties {ℓ ℓ′} (F : Set ℓ → Set ℓ′) (applicative : Applicative F) where
+module properties
+  {ℓ ℓ′}
+  (F : Set ℓ → Set ℓ′)
+  (_∼_ : {A : Set ℓ} → Rel (F A) ℓ′)
+  {{ isEquivalence : {A : Set ℓ} → IsEquivalence (_∼_ {A}) }}
+  (applicative : Applicative F _∼_) where
   open Applicative applicative
   open IsEquivalence {{...}}
   module ≈-Reasoning {A : Set ℓ} = Reasoning (setoid A)
   
   -- congruences
-
+  
   pure-cong : ∀ {A} {x y : A} → x ≡ y → pure x ≈ pure y
   pure-cong x≡y = reflexive (≡.cong pure x≡y)
   
@@ -128,22 +133,24 @@ module _ where
       Functor laws by itself
     
   -}
-  record BareApplicative {ℓ ℓ′} (F : Set ℓ → Set ℓ′) : Set (suc (ℓ ⊔ ℓ′)) where
+  record BareApplicative
+    {ℓ ℓ′}
+    (F : Set ℓ → Set ℓ′)
+    (_∼_ : ∀ {A : Set ℓ} → Rel (F A) ℓ′)
+    {{ isEquivalence : ∀ {A : Set ℓ} → IsEquivalence (_∼_ {A}) }}
+     : Set (suc (ℓ ⊔ ℓ′)) where
+    
     infixl 4 _<*>_
     infix 3 _≈_
+
+    _≈_ = _∼_
 
     field
       -- Minimal operations to define RawFunctor + RawApplicative
       pure : ∀ {A} → A → F A
       _<*>_ : ∀ {A B} → F (A → B) → F A → F B
-
-      -- Notion of equivalence is needed anyway
-      _≈_ : ∀ {A} → Rel (F A) ℓ′
-      instance
-        isEquivalence : {A : Set ℓ} → IsEquivalence (_≈_ {A = A})
       
       -- Minimal additional property to define IsFunctor + IsApplicative
-      
       <*>-cong : ∀ {A B : Set ℓ} {u₁ u₂ : F (A → B)} {v₁ v₂ : F A}
         → (u₁ ≈ u₂) → (v₁ ≈ v₂) → (u₁ <*> v₁ ≈ u₂ <*> v₂)
       identity : ∀ {A} (x : F A) → pure id <*> x ≈ x 
@@ -155,7 +162,11 @@ module _ where
     setoid : (A : Set ℓ) → Setoid ℓ′ ℓ′
     setoid A = record { isEquivalence = isEquivalence {A = A} }
 
-  mkApplicative : ∀ {ℓ ℓ′} {F : Set ℓ → Set ℓ′} → BareApplicative F → Applicative F
+  mkApplicative : ∀ {ℓ ℓ′}
+      → {F : Set ℓ → Set ℓ′}
+      → {_∼_ : {A : Set ℓ} → Rel (F A) ℓ′}
+      → {{ isEquivalence : {A : Set ℓ} → IsEquivalence (_∼_ {A}) }}
+      → BareApplicative F _∼_ {{ isEquivalence }} → Applicative F _∼_ {{ isEquivalence }}
   mkApplicative {ℓ} {ℓ′} {F = F} bare = record { rawApplicative = raw; isApplicative = record {isApplicativeImpl} }
     where
       open IsEquivalence {{...}}
@@ -192,9 +203,8 @@ module _ where
           ∎
           where open ≈-Reasoning
         
-        isFunctor : IsFunctor F rawFunctor
+        isFunctor : IsFunctor F _≈_ rawFunctor
         isFunctor = record {
-            isEquivalence = isEquivalence;
             <$>-cong = <$>-cong;
             <$>-id = <$>-id;
             <$>-∘ = <$>-∘
