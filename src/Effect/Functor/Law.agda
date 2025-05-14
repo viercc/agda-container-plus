@@ -8,23 +8,29 @@ open import Relation.Binary using (Rel; Setoid; IsEquivalence)
 open import Function using (_∘_; id; _$_)
 open import Effect.Functor
 
+module _ {ℓ ℓ′}
+  (F : Set ℓ → Set ℓ′)
+  (_≈_ : ∀ {A : Set ℓ} → Rel (F A) ℓ′)
+  (let infix 3 _≈_; _≈_ = _≈_)
+  {{ isEquivalence : ∀ {A : Set ℓ} → IsEquivalence (_≈_ {A}) }}
+  where
 
-private
-  variable
-    ℓ ℓ′ : Level
-    A B C X Y : Set ℓ
-
-record IsFunctor (F : Set ℓ → Set ℓ′) (raw : RawFunctor F) : Set (suc (ℓ ⊔ ℓ′)) where
-  infix 3 _≈_
-  
-  open RawFunctor raw
-
-  field
-    _≈_ : Rel (F A) ℓ′
-    instance isEquivalence : ∀ {A : Set ℓ} → IsEquivalence (_≈_ {A = A})
+  record IsFunctor (raw : RawFunctor F) : Set (suc (ℓ ⊔ ℓ′)) where
     
-    <$>-cong : ∀ (f : A → B) {u₁ u₂ : F A} → (u₁ ≈ u₂) → (f <$> u₁ ≈ f <$> u₂)
+    open RawFunctor raw
     
-    <$>-id : ∀ (x : F A) → (id <$> x ≈ x)
-    <$>-∘  : ∀ (f : B → C) (g : A → B) (x : F A)
-      → (f <$> (g <$> x) ≈ (f ∘ g) <$> x)
+    field
+      <$>-cong : ∀ {A B : Set ℓ} (f : A → B) {u₁ u₂ : F A} → (u₁ ≈ u₂) → (f <$> u₁ ≈ f <$> u₂)
+      
+      <$>-id : ∀ {A : Set ℓ} (x : F A) → (id <$> x ≈ x)
+      <$>-∘  : ∀ {A B C : Set ℓ} (f : B → C) (g : A → B) (x : F A)
+        → (f <$> (g <$> x) ≈ (f ∘ g) <$> x)
+
+  record Functor : Set (suc (ℓ ⊔ ℓ′)) where
+    field
+      instance 
+        rawFunctor : RawFunctor F
+        isFunctor : IsFunctor rawFunctor
+    
+    open RawFunctor rawFunctor public
+    open IsFunctor isFunctor public
