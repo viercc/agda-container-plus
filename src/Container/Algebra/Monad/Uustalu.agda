@@ -18,14 +18,14 @@ open C◇ using (◇) renaming (any to mk◇)
 
 open import Data.Container.Morphism using (id; _∘_)
 import Data.Container.Combinator as CC
-open CC using () renaming (_∘_ to Comp)
 
 open import Container.Morphism.Equality
 open import Container.Morphism.Iso
-open import Container.Combinator.Properties
+
+import Container.Combinator.Compose.Properties as ∘-Properties
+open ∘-Properties using (Id; Comp)
 
 import Container.Algebra.Monad as MM
-open MM using (leftId⇒; rightId⇒; assoc⇒)
 
 private
   variable
@@ -102,7 +102,7 @@ from-Uustalu-law {C = C} raw' isMonad' = record{ impl }
   where
     module impl where
       open ∘-Properties using (map₁; map₂)
-      open ◇-util using (curry◇; ◇-dcong; ◇-assocˡ)
+      open ∘-Properties.◇-util using (curry◇; ◇-dcong; ◇-assocˡ)
       
       open RawMonad raw'
       open IsMonad isMonad'
@@ -163,3 +163,4 @@ to-Uustalu rawMonad = record {rawMonadImpl'}
       ↗ : {s : S} → {v : P s → S} → (p : P (s • v)) → P (v (↖ p))
       ↗ {s} {v} p = proj₂ (◇.proof (position join {s = s , v } p))
  
+-- TODO: to-Uustalu-law
