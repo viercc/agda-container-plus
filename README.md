@@ -12,7 +12,7 @@ This library contains:
 - A formalization of `Functor` and `Applicative` laws
   
   - [Effect.Functor.Law](src/Effect/Functor/Law.agda)
-  - [Effect.Applicative.Law](src/Effect/Functor/Law.agda)
+  - [Effect.Applicative.Law](src/Effect/Applicative/Law.agda)
 
 - A data type representing `Container` which is also `Applicative` [^container-monads]
 
