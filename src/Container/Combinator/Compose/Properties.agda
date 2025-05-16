@@ -81,28 +81,24 @@ map₂ α .shape    = map⟦⟧ (shape α)
 map₂ α .position { s = s } (mk◇ pp) =
   mk◇ (Prod.map₂ (λ {pc} → position α {proj₂ s pc}) pp)
 
-open Container.Morphism.Equality.≈-correctness
-  using ()
-  renaming (≡⟪⟫'→≈ to with≡)
-
 module _ {c c' d d' : Level} where
   functorial₁ : {D : Container d d'} → Functorial (λ (C : Container c c') → Comp C D) map₁
   functorial₁ {D = D} = record {
-      map-id = λ {C} → with≡ (Comp C D) (Comp C D) (λ _ → ≡.refl);
-      map-∘ = λ {C₁ C₂ C₃} _ _ → with≡ (Comp C₁ D) (Comp C₃ D) (λ _ → ≡.refl)
+      map-id = λ {C} → mk≈ (λ _ → ≡.refl) (λ _ _ → ≡.refl);
+      map-∘ = λ {C₁ C₂ C₃} _ _ → mk≈ (λ _ → ≡.refl) (λ _ _ → ≡.refl)
     }
 
   functorial₂ : {C : Container c c'} → Functorial (λ (D : Container d d') → Comp C D) map₂
   functorial₂ {C = C} = record {
-      map-id = λ {D} → with≡ (Comp C D) (Comp C D) (λ _ → ≡.refl);
-      map-∘ = λ {D₁ D₂ D₃} _ _ → with≡ (Comp C D₁) (Comp C D₃) (λ _ → ≡.refl)
+      map-id = λ {D} → mk≈ (λ _ → ≡.refl) (λ _ _ → ≡.refl);
+      map-∘ = λ {D₁ D₂ D₃} _ _ → mk≈ (λ _ → ≡.refl) (λ _ _ → ≡.refl)
     }
 
   bifunctorial : Bifunctorial (λ (C : Container c c') (D : Container d d') → Comp C D) map₁ map₂
   bifunctorial = record {
       functorial₁ = functorial₁;
       functorial₂ = functorial₂;
-      map₁-map₂ = λ {C₁ C₂ D₁ D₂} _ _ → with≡ (Comp C₁ D₁) (Comp C₂ D₂) (λ _ → ≡.refl)
+      map₁-map₂ = λ {C₁ C₂ D₁ D₂} _ _ → mk≈ (λ _ → ≡.refl) (λ _ _ → ≡.refl)
     }
   
   bimap : ∀ {C₁ C₂ : Container c c'} {D₁ D₂ : Container d d'}
@@ -128,10 +124,10 @@ module _ {c c' d d' e e'}
   assoc⇔ = mk⇔ assocʳ assocˡ iso₁ iso₂
     where
       iso₁ : assocʳ ∘ assocˡ ≈ id (Comp C (Comp D E))
-      iso₁ = with≡ _ _ (λ _ → ≡.refl)
+      iso₁ = mk≈ (λ _ → ≡.refl) (λ _ _ → ≡.refl)
 
       iso₂ : assocˡ ∘ assocʳ ≈ id (Comp (Comp C D) E)
-      iso₂ = with≡ _ _ (λ _ → ≡.refl)
+      iso₂ = mk≈ (λ _ → ≡.refl) (λ _ _ → ≡.refl)
 
 module _ {c c' d d' e e'}
   {C₁ C₂ : Container c c'}
@@ -140,7 +136,7 @@ module _ {c c' d d' e e'}
   
   assoc-nat : ∀ (α : C₁ ⇒ C₂) (β : D₁ ⇒ D₂) (γ : E₁ ⇒ E₂)
         → bimap α (bimap β γ) ∘ assocʳ ≈ assocʳ ∘ bimap (bimap α β) γ
-  assoc-nat _ _ _ = with≡ (Comp (Comp C₁ D₁) E₁) (Comp C₂ (Comp D₂ E₂)) (λ _ → ≡.refl)
+  assoc-nat _ _ _ = mk≈ (λ _ → ≡.refl) (λ _ _ → ≡.refl)
 
 -- TODO:
 -- 
@@ -167,15 +163,15 @@ module _ {c c'} {C : Container c c'} where
   unitLeft⇔ : Comp Id' C ⇔ C
   unitLeft⇔ = record {
       to = unitLeft; from = ununitLeft;
-      to-from = with≡ C C (λ _ → ≡.refl);
-      from-to = with≡ (Comp Id C) (Comp Id C) (λ _ → ≡.refl)
+      to-from = mk≈ (λ _ → ≡.refl) (λ _ _ → ≡.refl);
+      from-to = mk≈ (λ _ → ≡.refl) (λ _ _ → ≡.refl)
     }
 
   unitRight⇔ : Comp C Id' ⇔ C
   unitRight⇔ = record {
       to = unitRight; from = ununitRight;
-      to-from = with≡ C C (λ _ → ≡.refl);
-      from-to = with≡ (Comp C Id) (Comp C Id) (λ _ → ≡.refl)
+      to-from = mk≈ (λ _ → ≡.refl) (λ _ _ → ≡.refl);
+      from-to = mk≈ (λ _ → ≡.refl) (λ _ _ → ≡.refl)
     }
 
 -- TODO:
