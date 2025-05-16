@@ -12,23 +12,23 @@ open import Data.Container.Morphism using (id; _∘_)
 
 open import Container.Morphism.Equality
 open import Container.Morphism.Iso using (_⇔_)
-import Container.Combinator.Compose.Properties as ∘-Properties
-open ∘-Properties using (Id; Comp; map₁; map₂)
+open import Container.Combinator.Compose as Compose
+  using (Id; Comp; map₁; map₂)
 
 private
   variable
     s p : Level
 
--- Common symbols
 module _ {C : Container s p} where
+  -- Less polymorphic operations
   ununitLeft : C ⇒ Comp Id C
-  ununitLeft = ∘-Properties.ununitLeft
+  ununitLeft = Compose.ununitLeft
 
   ununitRight : C ⇒ Comp C Id
-  ununitRight = ∘-Properties.ununitRight
+  ununitRight = Compose.ununitRight
 
   assocʳ : Comp (Comp C C) C ⇒ Comp C (Comp C C)
-  assocʳ = ∘-Properties.assocʳ
+  assocʳ = Compose.assocʳ
 
 record RawMonad {s p} (C : Container s p) : Set (s ⊔ p) where
   open Container C renaming (Shape to S; Position to P) public

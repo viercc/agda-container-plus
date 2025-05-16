@@ -17,13 +17,11 @@ import Data.Container.Relation.Unary.Any as C◇
 open C◇ using (◇) renaming (any to mk◇)
 
 open import Data.Container.Morphism using (id; _∘_)
-import Data.Container.Combinator as CC
 
 open import Container.Morphism.Equality
 open import Container.Morphism.Iso
 
-import Container.Combinator.Compose.Properties as ∘-Properties
-open ∘-Properties using (Id; Comp)
+open import Container.Combinator.Compose as Compose using (Id; Comp)
 
 import Container.Algebra.Monad as MM
 
@@ -101,8 +99,7 @@ from-Uustalu-law : ∀ {C : Container s p} (raw' : RawMonad C) (isMonad' : IsMon
 from-Uustalu-law {C = C} raw' isMonad' = record{ impl }
   where
     module impl where
-      open ∘-Properties using (map₁; map₂)
-      open ∘-Properties.◇-util using (curry◇; ◇-dcong; ◇-assocˡ)
+      open Compose.◇-util using (curry◇; ◇-dcong; ◇-assocˡ)
       
       open RawMonad raw'
       open IsMonad isMonad'
@@ -116,7 +113,7 @@ from-Uustalu-law {C = C} raw' isMonad' = record{ impl }
         j = Prod.uncurry _•_
         
         assoc-shape : (s₃ : ⟦ Comp C C ⟧ S) →
-          j (⟪ join ⟫ s₃) ≡ j (map⟦⟧ j (CC.from-∘ C C s₃))
+          j (⟪ join ⟫ s₃) ≡ j (map⟦⟧ j (Compose.from-Comp C C s₃))
         assoc-shape ( (s , v) , w◇ ) = •-• s v (curry◇ w◇)
 
         assoc-pos : (s₃ : ⟦ Comp C C ⟧ S) (p : P (j (⟪ join ⟫ s₃)))
