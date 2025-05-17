@@ -28,6 +28,8 @@ open import Container.Morphism.Equality
 
 module _ {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ : Container s₂ p₂) where
 
+  infix 8 _⇔_
+
   record _⇔_ : Set (s₁ ⊔ p₁ ⊔ s₂ ⊔ p₂) where
     constructor mk⇔
     field

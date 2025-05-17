@@ -16,6 +16,9 @@ import Data.Container.Combinator as CC
 
 open import Effect.Functor.Day
 
+-- Reexport
+open CC using () renaming (id to Id) public
+
 module _ {s p} (C D : Container s p) where
   infixr 9 _⊗_
 
@@ -39,16 +42,17 @@ map₂ : ∀ {s p} {C D₁ D₂ : Container s p}
 map₂ β .shape (c , d) = (c , β .shape d)
 map₂ β .position (pc , pd) = (pc , β .position pd)
 
-module _ {s p} (C D E : Container s p) where
+module _ {s p} {C D E : Container s p} where
   assocʳ : (C ⊗ D) ⊗ E ⇒ C ⊗ (D ⊗ E)
   assocʳ = Product.assocʳ′ ▷ Product.assocˡ′
 
   assocˡ : C ⊗ (D ⊗ E) ⇒ (C ⊗ D) ⊗ E
   assocˡ = Product.assocˡ′ ▷ Product.assocʳ′
 
-module _ {s p} (C : Container s p) where
+module _ {s p} {C : Container s p} where
+  -- Monomorphise level
   Id' : Container s p
-  Id' = CC.id
+  Id' = Id
 
   unitLeft : Id' ⊗ C ⇒ C
   unitLeft = proj₂ ▷ (tt ,_)
