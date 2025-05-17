@@ -67,3 +67,7 @@ module _ {c c'} {C : Container c c'} where
 
   ununitRight : C ⇒ C ⊗ Id'
   ununitRight = (_, tt) ▷ proj₁
+
+module _ {c c' d d'} {C : Container c c'} {D : Container d d'} where
+  swap : C ⊗ D ⇒ D ⊗ C
+  swap = Prod.swap ▷ Prod.swap

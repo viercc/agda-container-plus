@@ -28,10 +28,6 @@ open import Container.Combinator.Tensor
 
 open import Effect.Functor.Day using (Day)
 
-private
-  variable
-    c c' d d' e e' f f' : Level
-
 open IsEquivalence {{...}}
 
 module correct {c c' d d' x} (C : Container c c') (D : Container d d') where
@@ -204,3 +200,24 @@ monoidal {c} = record {
     unit-unit = refl;
     assoc-unit = refl
   }
+
+module _ {c c' d d'} {C : Container c c'} {D : Container d d'} where
+  swap⇔ : C ⊗ D ⇔ D ⊗ C
+  swap⇔ = record {
+      to = swap;
+      from = swap;
+      to-from = refl;
+      from-to = refl
+    }
+
+module _ {c c' d d' e e'} {C : Container c c'} {D : Container d d'} {E : Container e e'} where
+  open import Data.Container.Morphism using (_∘_)
+  open import Container.Morphism.Equality using (_≈_)
+
+  private
+    braid₁ braid₂ : (C ⊗ D) ⊗ E ⇒ D ⊗ (E ⊗ C)
+    braid₁ = assocʳ ∘ swap ∘ assocʳ
+    braid₂ = map₂ swap ∘ assocʳ ∘ map₁ swap
+
+  symmetric : braid₁ ≈ braid₂
+  symmetric = refl
