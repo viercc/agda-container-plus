@@ -26,11 +26,12 @@ module _ {c c' d d'} (C : Container c c') (D : Container d d') where
   _⊗_ .Shape = Shape C × Shape D
   _⊗_ .Position = uncurry λ c d → Position C c × Position D d
 
-  to-⊗ : ∀ {a} {A : Set a} → Day ⟦ C ⟧ ⟦ D ⟧ A → ⟦ _⊗_ ⟧ A
-  to-⊗ (day _ (c , f) (d , g)) = ((c , d) , uncurry λ pc pd → f pc (g pd))
+  to-⊗ : ∀ {x cx dx} {X : Set x} → Day {a = cx} {b = dx} ⟦ C ⟧ ⟦ D ⟧ X → ⟦ _⊗_ ⟧ X
+  to-⊗ (day _ _ op (c , f) (d , g)) = ((c , d) , uncurry λ pc pd → op (f pc , g pd))
 
-  from-⊗ : ∀ {A : Set d'} → ⟦ _⊗_ ⟧ A → Day ⟦ C ⟧ ⟦ D ⟧ A
-  from-⊗ ((c , d) , f) = day (Position D d) (c , λ pc pd → curry f pc pd) (d , F.id)
+  from-⊗ : ∀ {x} {X : Set x} → ⟦ _⊗_ ⟧ X → Day ⟦ C ⟧ ⟦ D ⟧ X
+  from-⊗ ((c , d) , f) =
+    day (Position C c) (Position D d) f (c , F.id) (d , F.id)
 
 map₁ : ∀ {c c' d d'} {C₁ C₂ : Container c c'} {D : Container d d'}
   → (C₁ ⇒ C₂) → C₁ ⊗ D ⇒ C₂ ⊗ D
