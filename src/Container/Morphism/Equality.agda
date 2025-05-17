@@ -4,6 +4,7 @@ module Container.Morphism.Equality where
 
 open import Level
 
+open import Relation.Binary using (Rel; IsEquivalence; Setoid)
 open import Relation.Binary.PropositionalEquality as ≡
   using (_≡_; _≗_)
 
@@ -20,10 +21,25 @@ open import Data.Container.Relation.Binary.Pointwise
   using (Pointwise)
   renaming (_,_ to mkPointwise)
 
-module _ {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ : Container s₂ p₂) where
+private
+  module _ {a} {A : Set a} {b} {B : A → Set b} {c} {C : Set c} where
+    sym-subst : {x y : A} → (eq : x ≡ y)
+      → {f : B x → C} {g : B y → C}
+      → (∀ (bx : B x) → f bx ≡ g (≡.subst B eq bx))
+      → (∀ (by : B y) → g by ≡ f (≡.subst B (≡.sym eq) by))
+    sym-subst ≡.refl f≗g by = ≡.sym (f≗g by)
+  
+  module _ {a} {A : Set a} {b} {B : A → Set b} {c} {C : Set c} where
+    subst-contramap : {x y : A} → (eq : x ≡ y)
+      → {f : B x → C} {g : B y → C}
+      → (≡.subst (λ z → (B z → C)) eq f ≡ g)
+      → ∀ (bx : B x) → f bx ≡ g (≡.subst B eq bx)
+    subst-contramap ≡.refl ≡.refl _ = ≡.refl
 
-  -- Pointwise equality between container morphisms
-  record Eq (ff gg : C₁ ⇒ C₂) : Set (s₁ ⊔ s₂ ⊔ p₁ ⊔ p₂) where
+module _ {s₁ p₁ s₂ p₂} {C₁ : Container s₁ p₁} {C₂ : Container s₂ p₂} where
+  infix 4 _≈_
+
+  record _≈_ (ff gg : C₁ ⇒ C₂) : Set (s₁ ⊔ s₂ ⊔ p₁ ⊔ p₂) where
     constructor mk≈
 
     open Container C₁ renaming (Shape to S₁; Position to P₁)
@@ -36,21 +52,51 @@ module _ {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ : Container s�
     
     field shape    : f ≗ g
           position : ∀ (c : S₁) → f# {c} ≗ g# {c} ∘ ≡.subst P₂ (shape c)
+  
+  open _≈_
+  
+  private
+    refl : {m : C₁ ⇒ C₂} → m ≈ m
+    refl = mk≈ (λ _ → ≡.refl) (λ _ _ → ≡.refl)
 
-infix 4 _≈_
+    sym : {m n : C₁ ⇒ C₂} → m ≈ n → n ≈ m
+    sym m≈n =
+      mk≈ (λ c → ≡.sym (m≈n .shape c)) 
+          (λ c p → sym-subst (m≈n .shape c) (m≈n .position c) p)
+    
+    trans : {m n r : C₁ ⇒ C₂} → m ≈ n → n ≈ r → m ≈ r
+    trans {m = m ▷ m#} {n = n ▷ n#} {r = r ▷ r#} m≈n n≈r = mk≈ shape≈ pos≈
+      where
+        S₁ = Shape C₁
+        P₂ = Position C₂
+        shape≈ : (c : S₁) → m c ≡ r c
+        shape≈ c = ≡.trans (shape m≈n c) (shape n≈r c)
 
-_≈_ : ∀ {s₁ p₁ s₂ p₂} {C₁ : Container s₁ p₁} {C₂ : Container s₂ p₂}
-  → (m n : C₁ ⇒ C₂) → Set (s₁ ⊔ s₂ ⊔ p₁ ⊔ p₂)
-_≈_ {C₁ = C₁} {C₂ = C₂} = Eq C₁ C₂
+        pos≈ : (c : S₁) (p : P₂ (m c)) → m# p ≡ r# (≡.subst P₂ (shape≈ c) p)
+        pos≈ c p =
+          begin
+            m# p
+          ≡⟨ position m≈n c p ⟩
+            n# (≡.subst P₂ (shape m≈n c) p)
+          ≡⟨ position n≈r c _ ⟩
+            r# (≡.subst P₂ (shape n≈r c) (≡.subst P₂ (shape m≈n c) p))
+          ≡⟨ ≡.cong r# (≡.subst-subst (shape m≈n c)) ⟩
+            r# (≡.subst P₂ (shape≈ c) p)
+          ∎
+          where open ≡.≡-Reasoning
+  
+  instance
+    isEquivalence : IsEquivalence _≈_
+    isEquivalence =
+      record { refl = refl; sym = sym; trans = trans }
+  
+  ≈-setoid : Setoid (s₁ ⊔ s₂ ⊔ p₁ ⊔ p₂) (s₁ ⊔ s₂ ⊔ p₁ ⊔ p₂)
+  ≈-setoid = record { isEquivalence = isEquivalence }
 
-private
-
-  module _ {a} {A : Set a} {b} {B : A → Set b} {c} {C : Set c} where
-    subst-contramap : {x y : A} → (eq : x ≡ y)
-      → {f : B x → C} {g : B y → C}
-      → (≡.subst (λ z → (B z → C)) eq f ≡ g)
-      → ∀ (bx : B x) → f bx ≡ g (≡.subst B eq bx)
-    subst-contramap ≡.refl ≡.refl _ = ≡.refl
+module _ {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ : Container s₂ p₂) where
+  -- Variant of _≈_ taking C₁, C₂ as explicit argument
+  Eq : Rel (C₁ ⇒ C₂) (s₁ ⊔ s₂ ⊔ p₁ ⊔ p₂)
+  Eq = _≈_ {C₁ = C₁} {C₂ = C₂}
 
 module ≈-correctness {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ : Container s₂ p₂) where
   open Container C₁ renaming (Shape to S₁; Position to P₁)
@@ -117,7 +163,7 @@ module ≈-correctness {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ 
         (shape to f; position to f#)
       open _⇒_ gg renaming
         (shape to g; position to g#)
-      open Eq ff≈gg renaming
+      open _≈_ ff≈gg renaming
         (shape to shape≈; position to position≈)
 
       shapeEq : f c ≡ g c
