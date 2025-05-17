@@ -19,39 +19,40 @@ open import Effect.Functor.Day
 -- Reexport
 open CC using () renaming (id to Id) public
 
-module _ {s p} (C D : Container s p) where
+module _ {c c' d d'} (C : Container c c') (D : Container d d') where
   infixr 9 _⊗_
 
-  _⊗_ : Container s p
+  _⊗_ : Container (c ⊔ d) (c' ⊔ d')
   _⊗_ .Shape = Shape C × Shape D
   _⊗_ .Position = uncurry λ c d → Position C c × Position D d
 
   to-⊗ : ∀ {a} {A : Set a} → Day ⟦ C ⟧ ⟦ D ⟧ A → ⟦ _⊗_ ⟧ A
   to-⊗ (day _ (c , f) (d , g)) = ((c , d) , uncurry λ pc pd → f pc (g pd))
 
-  from-⊗ : ∀ {A : Set p} → ⟦ _⊗_ ⟧ A → Day ⟦ C ⟧ ⟦ D ⟧ A
+  from-⊗ : ∀ {A : Set d'} → ⟦ _⊗_ ⟧ A → Day ⟦ C ⟧ ⟦ D ⟧ A
   from-⊗ ((c , d) , f) = day (Position D d) (c , λ pc pd → curry f pc pd) (d , F.id)
 
-map₁ : ∀ {s p} {C₁ C₂ D : Container s p}
+map₁ : ∀ {c c' d d'} {C₁ C₂ : Container c c'} {D : Container d d'}
   → (C₁ ⇒ C₂) → C₁ ⊗ D ⇒ C₂ ⊗ D
 map₁ α .shape (c , d) = (α .shape c , d)
 map₁ α .position (pc , pd) = (α .position pc , pd)
 
-map₂ : ∀ {s p} {C D₁ D₂ : Container s p}
+map₂ : ∀ {c c' d d'} {C : Container c c'} {D₁ D₂ : Container d d'}
   → (D₁ ⇒ D₂) → (C ⊗ D₁ ⇒ C ⊗ D₂)
 map₂ β .shape (c , d) = (c , β .shape d)
 map₂ β .position (pc , pd) = (pc , β .position pd)
 
-module _ {s p} {C D E : Container s p} where
+module _ {c c' d d' e e'}
+  {C : Container c c'} {D : Container d d'} {E : Container e e'} where
   assocʳ : (C ⊗ D) ⊗ E ⇒ C ⊗ (D ⊗ E)
   assocʳ = Product.assocʳ′ ▷ Product.assocˡ′
 
   assocˡ : C ⊗ (D ⊗ E) ⇒ (C ⊗ D) ⊗ E
   assocˡ = Product.assocˡ′ ▷ Product.assocʳ′
 
-module _ {s p} {C : Container s p} where
+module _ {c c'} {C : Container c c'} where
   -- Monomorphise level
-  Id' : Container s p
+  Id' : Container c c'
   Id' = Id
 
   unitLeft : Id' ⊗ C ⇒ C

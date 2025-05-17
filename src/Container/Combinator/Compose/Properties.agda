@@ -31,19 +31,19 @@ private
 open IsEquivalence {{...}}
 
 module _ {c c' d d' : Level} where
-  functorial₁ : {D : Container d d'} → Functorial (λ (C : Container c c') → Comp C D) map₁
+  functorial₁ : {D : Container d d'} → Functorial {c = c} {c' = c'} (λ C → Comp C D) map₁
   functorial₁ {D = D} = record {
       map-id = refl;
       map-∘ = λ _ _ → refl
     }
 
-  functorial₂ : {C : Container c c'} → Functorial (λ (D : Container d d') → Comp C D) map₂
+  functorial₂ : {C : Container c c'} → Functorial {c = d} {c' = d'} (Comp C) map₂
   functorial₂ {C = C} = record {
       map-id = refl;
       map-∘ = λ _ _ → refl
     }
 
-  bifunctorial : Bifunctorial (λ (C : Container c c') (D : Container d d') → Comp C D) map₁ map₂
+  bifunctorial : Bifunctorial Comp map₁ map₂
   bifunctorial = record {
       functorial₁ = functorial₁;
       functorial₂ = functorial₂;

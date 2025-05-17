@@ -30,14 +30,14 @@ private
 
 open IsEquivalence {{...}}
 
-module _ {c c' : Level} where
-  functorial₁ : {D : Container d d'} → Functorial (_⊗ D) map₁
+module _ {c c' d d' : Level} where
+  functorial₁ : {D : Container d d'} → Functorial {c = c} {c' = c'} (_⊗ D) map₁
   functorial₁ {D = D} = record {
       map-id = refl;
       map-∘ = λ _ _ → refl
     }
 
-  functorial₂ : {C : Container c c'} → Functorial (C ⊗_) map₂
+  functorial₂ : {C : Container c c'} → Functorial {c = d} {c' = d'} (C ⊗_) map₂
   functorial₂ {C = C} = record {
       map-id = refl;
       map-∘ = λ _ _ → refl
@@ -54,15 +54,15 @@ open _⇔_
 
 -- Associativity
 
-module _ {c c'}
+module _ {c c' d d' e e'}
   {C : Container c c'}
-  {D : Container c c'}
-  {E : Container c c'} where
+  {D : Container d d'}
+  {E : Container e e'} where
   assoc⇔ : (C ⊗ D) ⊗ E ⇔ C ⊗ (D ⊗ E)
   assoc⇔ = mk⇔ assocʳ assocˡ refl refl
 
-semigroupal : {c : Level} → Semigroupal {c = c} {c' = c} _⊗_ map₁ map₂ assoc⇔
-semigroupal {c} = record {
+semigroupal : {c c' : Level} → Semigroupal {c = c} {c' = c'} _⊗_ map₁ map₂ assoc⇔
+semigroupal = record {
     bifunctorial = bifunctorial;
     assoc-nat = λ _ _ _ → refl;
     pentagon = refl
