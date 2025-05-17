@@ -62,27 +62,16 @@ module _ {a a' b b' x : Level}
 
     -- Which equality (_≈_) should be used between two `Day F G X` values `(u, v)`?
     -- 
-    -- > u = day A (F (A → X) ∋ uF) (G A ∋ uG)
-    -- > v = day B (F (B → X) ∋ vF) (G B ∋ vG)
+    -- > u = day A  B  op  fa  gb
+    -- > v = day A' B' op' fa' gb'
     -- 
     -- Of course, equality as a dependent product can be defined:
     
-    record TooStrictEq {X : Set x} (u v : Day F G X) : Set x' where
-      constructor mkStrictEq
-      open Day
-
-      field
-        A≡A' : u .A ≡ v .A
-        B≡B' : u .B ≡ v .B
-      
-      AB≡A'B' : (u .A × u .B) ≡ (v .A × v .B)
-      AB≡A'B' = ≡.cong₂ _×_ A≡A' B≡B'
-
-      field
-        uop≗vop : ∀ (ab : u .A × u .B)
-          → u .op ab ≡ v .op (≡.subst F.id AB≡A'B' ab)
-        uF≈vF : ≡.subst F A≡A' (u .comp₁) ≈₁ v .comp₁
-        uG≈vG : ≡.subst G B≡B' (u .comp₂) ≈₂ v .comp₂
+    data TooStrictEq {X : Set x} : Rel (Day F G X) x' where
+      mkStrictEq : ∀ {A : Set a} {B : Set b}
+        → {op₁ op₂ : A × B → X} {fa₁ fa₂ : F A} {gb₁ gb₂ : G B}
+        → op₁ ≗ op₂ → fa₁ ≈₁ fa₂ → gb₁ ≈₂ gb₂
+        → TooStrictEq (day A B op₁ fa₁ gb₁) (day A B op₂ fa₂ gb₂)
     
     -- But, as the name suggests, `TooStrictEq` is not what we want when defining
     -- Day convolution of `Functor`s. `A` and `B`, the two type parameters `Day` sums over,
@@ -127,7 +116,7 @@ module _ {a a' b b' x : Level}
       {X = X}
       {x = day A B op fa gb}
       {y = day _ _ op' fa' gb'}
-      (mkStrictEq ≡.refl ≡.refl op≗ ≈F ≈G) =
+      (mkStrictEq op≗ ≈F ≈G) =
       begin
         day A B op fa gb
       ≈⟨ EqCl.return (link F.id F.id op≗) ⟩
