@@ -2,8 +2,8 @@
 
 module Container.Combinator.Tensor where
 
-open import Level using (Level; _⊔_; lower)
-open import Data.Product as Product
+open import Level using (Level; _⊔_; Lift; lower)
+open import Data.Product as Prod
   using (_×_; _,_; proj₁; proj₂; uncurry; curry)
 open import Data.Unit.Polymorphic.Base using (⊤; tt)
 
@@ -27,7 +27,7 @@ module _ {c c' d d'} (C : Container c c') (D : Container d d') where
   _⊗_ .Position = uncurry λ c d → Position C c × Position D d
 
   to-⊗ : ∀ {x cx dx} {X : Set x} → Day {a = cx} {b = dx} ⟦ C ⟧ ⟦ D ⟧ X → ⟦ _⊗_ ⟧ X
-  to-⊗ (day _ _ op (c , f) (d , g)) = ((c , d) , uncurry λ pc pd → op (f pc , g pd))
+  to-⊗ (day _ _ op (c , f) (d , g)) = ((c , d) , op F.∘′ Prod.map f g)
 
   from-⊗ : ∀ {x} {X : Set x} → ⟦ _⊗_ ⟧ X → Day ⟦ C ⟧ ⟦ D ⟧ X
   from-⊗ ((c , d) , f) =
@@ -46,10 +46,10 @@ map₂ β .position (pc , pd) = (pc , β .position pd)
 module _ {c c' d d' e e'}
   {C : Container c c'} {D : Container d d'} {E : Container e e'} where
   assocʳ : (C ⊗ D) ⊗ E ⇒ C ⊗ (D ⊗ E)
-  assocʳ = Product.assocʳ′ ▷ Product.assocˡ′
+  assocʳ = Prod.assocʳ′ ▷ Prod.assocˡ′
 
   assocˡ : C ⊗ (D ⊗ E) ⇒ (C ⊗ D) ⊗ E
-  assocˡ = Product.assocˡ′ ▷ Product.assocʳ′
+  assocˡ = Prod.assocˡ′ ▷ Prod.assocʳ′
 
 module _ {c c'} {C : Container c c'} where
   -- Monomorphise level
