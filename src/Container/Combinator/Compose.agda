@@ -93,16 +93,11 @@ module _ {c c' d d' e e'}
   assocˡ : Comp C (Comp D E) ⇒ Comp (Comp C D) E
   assocˡ = to-Comp C D ▷ ◇-assocʳ {C = C} {D = D} {Q = Position E}
 
--- TODO:
--- 
--- semigroupal : {c : Level} → Semigroupal {c = c} {c' = c} Comp map₁ map₂ assoc⇔
--- semigroupal {c} = _
-
 -- Units
 module _ {c c'} {C : Container c c'} where
   private
     Id' : Container c c'
-    Id' = CC.id
+    Id' = Id
 
   unitLeft : Comp Id' C ⇒ C
   unitLeft = CC.from-id ▷ λ p → mk◇ (tt , p)
@@ -115,8 +110,3 @@ module _ {c c'} {C : Container c c'} where
 
   ununitRight : C ⇒ Comp C Id'
   ununitRight = (λ s → s , F.const tt) ▷ λ (mk◇ (p , _)) → p
-
--- TODO:
--- 
--- monoidal : {c : Level} → Monoidal {c = c} {c' = c} Comp CC.id map₁ map₂ assoc⇔ unitLeft⇔ unitRight⇔
--- monoidal {c} = _
