@@ -27,7 +27,7 @@ open import Effect.Applicative.Properties
 open import Container.Algebra.Action
 open import Container.Effect.Functor
 
-module Container.Effect.Applicative {s p : Level} {Con : Container s p} where
+module Container.Effect.Applicative.FromAction {s p : Level} {Con : Container s p} where
   
 -- Make RawApplicative out of RawAction
 module _ (raw : RawAction Con) where

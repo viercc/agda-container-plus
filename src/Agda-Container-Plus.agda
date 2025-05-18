@@ -13,8 +13,8 @@ import Container.Morphism.Equality
 import Container.Morphism.Iso
 
 import Container.Effect.Functor
-import Container.Effect.Applicative
-import Container.Effect.Applicative.Complete
+import Container.Effect.Applicative.FromAction
+import Container.Effect.Applicative.ToAction
 
 import Effect.Applicative.Law
 import Effect.Applicative.Properties

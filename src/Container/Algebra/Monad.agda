@@ -1,5 +1,7 @@
 {-# OPTIONS --without-K --safe #-}
 
+-- A Monad is a monoid with respect to composition
+-- of containers.
 module Container.Algebra.Monad where
 
 open import Level
@@ -44,3 +46,5 @@ record IsMonad (C : Container s p) (raw : RawMonad C) : Set (s ⊔ p) where
     left-unit : join ∘ map₁ unit ∘ ununitLeft ≈ id C
     right-unit : join ∘ map₂ unit ∘ ununitRight ≈ id C
     assoc : join ∘ map₁ join ≈ join ∘ map₂ join ∘ assocʳ
+
+-- TODO: every Monad is TensorMonoid

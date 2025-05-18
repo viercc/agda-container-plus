@@ -37,6 +37,12 @@ module _
   rawFunctor : ∀ {x} → RawFunctor {ℓ = x} Day
   rawFunctor = record { _<$>_ = mapDay }
 
+-- Constructor of `Day F G` but explicitly takes the existential types `A`, `B`
+eday : ∀ {a a' b b'} {F : Set a → Set a'} {G : Set b → Set b'} {x : Level} {X : Set x}
+  → (A : Set a) (B : Set b)
+  → (A × B → X) → F A → G B → Day F G X
+eday A B = day {A = A} {B = B}
+
 module _ {a a' b b' x : Level}
   {Fi : Set a → Setoid a' a'}
   (functorF : FunctorS Fi)

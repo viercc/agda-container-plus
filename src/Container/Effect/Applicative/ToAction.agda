@@ -33,7 +33,7 @@ open import Effect.Applicative.Properties
 open import Container.Algebra.Action
 open import Container.Effect.Functor using (_≈_; ≈-isEquivalence; ≈-setoid)
 
-module Container.Effect.Applicative.Complete {s p : Level} {Con : Container s p} where
+module Container.Effect.Applicative.ToAction {s p : Level} {Con : Container s p} where
 
 open Container Con renaming (Shape to S; Position to P)
 
