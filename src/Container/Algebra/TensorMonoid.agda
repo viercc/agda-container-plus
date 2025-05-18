@@ -5,6 +5,7 @@ module Container.Algebra.TensorMonoid where
 
 open import Level
 
+import Function as F
 open import Data.Unit.Polymorphic.Base using (⊤; tt)
 open import Data.Product as Prod
   using (Σ; _×_; _,_; proj₁; proj₂)
@@ -25,11 +26,11 @@ open import Container.Combinator.Tensor as T
 
 module _ {s p} {C : Container s p} where
   -- Less polymorphic operations
-  ununitLeft : C ⇒ Id ⊗ C
-  ununitLeft = T.ununitLeft
+  unitLeft : Id ⊗ C ⇒ C
+  unitLeft = T.unitLeft
 
-  ununitRight : C ⇒ C ⊗ Id
-  ununitRight = T.ununitRight
+  unitRight : C ⊗ Id ⇒ C
+  unitRight = T.unitRight
 
   assocʳ : (C ⊗ C) ⊗ C ⇒ C ⊗ (C ⊗ C)
   assocʳ = T.assocʳ
@@ -43,8 +44,8 @@ record IsMonoid {s p} (C : Container s p) (raw : RawMonoid C) : Set (s ⊔ p) wh
   open RawMonoid raw
 
   field
-    left-unit : mult ∘ map₁ unit ∘ ununitLeft ≈ id C
-    right-unit : mult ∘ map₂ unit ∘ ununitRight ≈ id C
+    left-unit : mult ∘ map₁ unit ≈ unitLeft
+    right-unit : mult ∘ map₂ unit ≈ unitRight
     assoc : mult ∘ map₁ mult ≈ mult ∘ map₂ mult ∘ assocʳ
 
 record Monoid {s p} (Con : Container s p) : Set (s ⊔ p) where
@@ -98,8 +99,29 @@ module ToAction {s p} (Con : Container s p) where
         isMonoid =
           mkIsMonoid ≡.isEquivalence (≡.cong₂ _·_)
             (λ x y z → assoc ._≈_.shape ((x , y) , z))
-            (left-unit ._≈_.shape)
-            (right-unit ._≈_.shape)
+            (λ x → left-unit ._≈_.shape (tt , x))
+            (λ x → right-unit ._≈_.shape (x , tt))
+
+        module SM = Algebra.Structures.IsMonoid isMonoid
+        
+        open import Data.Product.Properties
+          using ()
+          renaming (,-injectiveˡ to injective-l; ,-injectiveʳ to injective-r)
+        
+        ϕleft-id : (x : S) → ϕleft ≗ ≡.subst P (SM.identityʳ x)
+        ϕleft-id x p = injective-l (right-unit ._≈_.position (x , tt) p)
+        
+        ϕright-id : (x : S) → ϕright ≗ ≡.subst P (SM.identityˡ x)
+        ϕright-id x p = injective-r (left-unit ._≈_.position (tt , x) p)
+
+        ϕleft-homo : (x y z : S) → ϕleft F.∘ ϕleft ≗ ϕleft F.∘ ≡.subst P (SM.assoc x y z)
+        ϕleft-homo x y z p = injective-l (injective-l (assoc ._≈_.position _ p))
+
+        ϕinterchange : (x y z : S) → ϕright F.∘ ϕleft ≗ ϕleft F.∘ ϕright F.∘ ≡.subst P (SM.assoc x y z)
+        ϕinterchange x y z p = injective-r (injective-l (assoc ._≈_.position _ p))
+
+        ϕright-homo : (x y z : S) → ϕright ≗ ϕright F.∘ ϕright F.∘ ≡.subst P (SM.assoc x y z)
+        ϕright-homo x y z p = injective-r (assoc ._≈_.position _ p)
 
     toIsAction : IsAction Con rawAction
     toIsAction = record {lawImpl}
