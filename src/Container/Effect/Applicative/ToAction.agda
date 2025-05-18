@@ -181,19 +181,14 @@ module _ (applicative : Applicative ⟦ Con ⟧ _≈_) where
                 (x · (y · z) , λ p → ϕleft p , ϕleft (ϕright p) , ϕright (ϕright p))
               ∎
 
+        open import Algebra.Structures.PatternSynonyms
+
         isMonoid : IsMonoid _≡_ _·_ ε
-        isMonoid = impl
-          where
-            open import Algebra.Structures using (IsMonoid; IsSemigroup; IsMagma)
-            open IsMonoid
-            open IsSemigroup
-            open IsMagma
-            impl : IsMonoid _≡_ _·_ ε
-            impl .isSemigroup .isMagma .isEquivalence = ≡.isEquivalence
-            impl .isSemigroup .isMagma .∙-cong = ≡.cong₂ _
-            impl .isSemigroup .assoc x y z = unfolded-assoc x y z .shape
-            impl .identity .proj₁ x = unfolded-left-id x .shape
-            impl .identity .proj₂ x = unfolded-right-id x .shape
+        isMonoid =
+          mkIsMonoid ≡.isEquivalence (≡.cong₂ _·_)
+            (λ x y z → unfolded-assoc x y z .shape)
+            (λ x → unfolded-left-id x .shape)
+            (λ x → unfolded-right-id x .shape)
         
         open IsMonoid isMonoid
 

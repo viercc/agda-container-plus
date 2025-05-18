@@ -5,9 +5,15 @@ module Container.Algebra.TensorMonoid where
 
 open import Level
 
+open import Data.Unit.Polymorphic.Base using (⊤; tt)
+open import Data.Product as Prod
+  using (Σ; _×_; _,_; proj₁; proj₂)
+  renaming (_,′_ to pair)
+
+open import Relation.Binary.PropositionalEquality as ≡
+  using (_≡_)
+
 open import Data.Container.Core
-import Data.Container.Relation.Unary.Any as C◇
-open C◇ using (◇) renaming (any to mk◇)
 
 open import Data.Container.Morphism using (id; _∘_)
 
@@ -15,6 +21,7 @@ open import Container.Morphism.Equality
 open import Container.Morphism.Iso using (_⇔_)
 open import Container.Combinator.Tensor as T
   using (Id; _⊗_; map₁; map₂)
+
 
 module _ {s p} {C : Container s p} where
   -- Less polymorphic operations
@@ -50,3 +57,49 @@ record Monoid {s p} (Con : Container s p) : Set (s ⊔ p) where
 
 -- TODO: TensorMonoid ↔ Action
 --   (probably I should rename Action to TensorMonoid.Uustalu)
+
+module ToAction {s p} (Con : Container s p) where
+  open import Container.Algebra.Action
+  open Container Con renaming (Shape to S; Position to P)
+
+  module _ (raw : RawMonoid Con) where
+    open RawMonoid raw
+
+    private
+      module rawImpl where
+        ε : S
+        ε = unit .shape tt
+
+        _·_ : S → S → S
+        _·_ x y = mult .shape (x , y)
+
+        ϕleft : {x y : S} → P (x · y) → P x
+        ϕleft p = mult .position p .proj₁
+
+        ϕright : {x y : S} → P (x · y) → P y
+        ϕright p = mult .position p .proj₂
+    
+    toRawAction : RawAction Con
+    toRawAction = record {rawImpl}
+
+  module _ (raw : RawMonoid Con) (law : IsMonoid Con raw) where
+    open RawMonoid raw
+    open IsMonoid law
+
+    private
+      rawAction = toRawAction raw
+      open RawAction rawAction hiding (S; P)
+      
+      import Algebra.Structures
+      open import Algebra.Structures.PatternSynonyms
+
+      module lawImpl where
+        isMonoid : Algebra.Structures.IsMonoid _≡_ _·_ ε
+        isMonoid =
+          mkIsMonoid ≡.isEquivalence (≡.cong₂ _·_)
+            (λ x y z → assoc ._≈_.shape ((x , y) , z))
+            (left-unit ._≈_.shape)
+            (right-unit ._≈_.shape)
+
+    toIsAction : IsAction Con rawAction
+    toIsAction = record {lawImpl}
