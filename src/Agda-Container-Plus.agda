@@ -1,5 +1,6 @@
 import Container.Algebra.Action
 import Container.Algebra.Action.Inv
+import Container.Algebra.TensorMonoid
 import Container.Algebra.Monad
 import Container.Algebra.Monad.Uustalu
 
