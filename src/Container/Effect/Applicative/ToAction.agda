@@ -87,12 +87,6 @@ record Correctness (rawApplicative : RawApplicative F) (rawAction : RawAction Co
   open RawAction rawAction hiding (S; P)
 
   field
-    -- Having this field is actually redundant, because it follows from the other
-    -- fields and IsApplicative.
-    -- But anyway, we will require Caninical<$> to build CorrectExtraction
-    -- using extractAction shown below.
-    -- This field works as a "cache" of the proof of Canonical<$> used to
-    -- construct this record.
     <$>-nf : Canonical<$> _<$>_
     pure-nf : ∀ {A} {a : A} → pure a ≈ (ε , const a)
     <*>-nf : ∀ {A B} {x y : S} {f : P x → A → B} {g : P y → A} →
