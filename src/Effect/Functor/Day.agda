@@ -25,14 +25,14 @@ module _
   record Day {x : Level} (X : Set x) : Set (suc (a ⊔ b) ⊔ fa ⊔ gb ⊔ x) where
     constructor day
     field
-      A : Set a
-      B : Set b
+      {A} : Set a
+      {B} : Set b
       op : A × B → X
       comp₁ : F A
       comp₂ : G B
 
   mapDay : ∀ {x} {X Y : Set x} → (X → Y) → Day X → Day Y
-  mapDay f (day A B op fa gb) = day A B (f ∘′ op) fa gb
+  mapDay f (day op fa gb) = day (f ∘′ op) fa gb
 
   rawFunctor : ∀ {x} → RawFunctor {ℓ = x} Day
   rawFunctor = record { _<$>_ = mapDay }
@@ -71,7 +71,7 @@ module _ {a a' b b' x : Level}
       mkStrictEq : ∀ {A : Set a} {B : Set b}
         → {op₁ op₂ : A × B → X} {fa₁ fa₂ : F A} {gb₁ gb₂ : G B}
         → op₁ ≗ op₂ → fa₁ ≈₁ fa₂ → gb₁ ≈₂ gb₂
-        → TooStrictEq (day A B op₁ fa₁ gb₁) (day A B op₂ fa₂ gb₂)
+        → TooStrictEq (day op₁ fa₁ gb₁) (day op₂ fa₂ gb₂)
     
     -- But, as the name suggests, `TooStrictEq` is not what we want when defining
     -- Day convolution of `Functor`s. `A` and `B`, the two type parameters `Day` sums over,
@@ -83,17 +83,17 @@ module _ {a a' b b' x : Level}
 
     data _⊏_ {X : Set x} : Rel (Day F G X) x' where
       congF : ∀ {A} {B} {op : A × B → X} {fa fa' : F A} {gb : G B}
-        → fa ≈₁ fa' → day A B op fa gb ⊏ day A B op fa' gb
+        → fa ≈₁ fa' → day op fa gb ⊏ day op fa' gb
       
       congG : ∀ {A} {B} {op} {fa : F A} {gb gb' : G B}
-        → gb ≈₂ gb' → day A B op fa gb ⊏ day A B op fa gb'
+        → gb ≈₂ gb' → day op fa gb ⊏ day op fa gb'
       
       link : ∀ {A A' : Set a} {B B' : Set b}
         (linkA : A → A') (linkB : B → B')
         {op : A × B → X} {op' : A' × B' → X }
         → (op ≗ op' ∘′ Prod.map linkA linkB)
         → { fa : F A } { gb : G B }
-        → day A B op fa gb ⊏ day A' B' op' (linkA <$> fa) (linkB <$> gb) 
+        → day op fa gb ⊏ day op' (linkA <$> fa) (linkB <$> gb) 
     
     -- The _⊏_ relation is not equivalence relation by itself.
     -- Therefore, the appropriate _≈_ is the symmetric reflexive transitive closure
@@ -114,17 +114,17 @@ module _ {a a' b b' x : Level}
     TooStrictEq⇒≈ : {X : Set x} → TooStrictEq {X} Rel⇒ _≈_ {X}
     TooStrictEq⇒≈
       {X = X}
-      {x = day A B op fa gb}
-      {y = day _ _ op' fa' gb'}
+      {x = day op fa gb}
+      {y = day op' fa' gb'}
       (mkStrictEq op≗ ≈F ≈G) =
       begin
-        day A B op fa gb
+        day op fa gb
       ≈⟨ EqCl.return (link F.id F.id op≗) ⟩
-        day A B op' (F.id <$> fa) (F.id <$> gb)
+        day op' (F.id <$> fa) (F.id <$> gb)
       ≈⟨ EqCl.return (congF (trans (FF.<$>-id fa) ≈F)) ⟩
-        day A B op' fa' (F.id <$> gb)
+        day op' fa' (F.id <$> gb)
       ≈⟨ EqCl.return (congG (trans (FG.<$>-id gb) ≈G)) ⟩
-        day A B op' fa' gb'
+        day op' fa' gb'
       ∎
       where open ≈-Reasoning (Day-setoid X)
     

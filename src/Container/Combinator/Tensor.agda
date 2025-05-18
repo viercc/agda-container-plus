@@ -27,11 +27,11 @@ module _ {c c' d d'} (C : Container c c') (D : Container d d') where
   _⊗_ .Position = uncurry λ c d → Position C c × Position D d
 
   to-⊗ : ∀ {x cx dx} {X : Set x} → Day {a = cx} {b = dx} ⟦ C ⟧ ⟦ D ⟧ X → ⟦ _⊗_ ⟧ X
-  to-⊗ (day _ _ op (c , f) (d , g)) = ((c , d) , op F.∘′ Prod.map f g)
+  to-⊗ (day op (c , f) (d , g)) = ((c , d) , op F.∘′ Prod.map f g)
 
   from-⊗ : ∀ {x} {X : Set x} → ⟦ _⊗_ ⟧ X → Day ⟦ C ⟧ ⟦ D ⟧ X
   from-⊗ ((c , d) , f) =
-    day (Position C c) (Position D d) f (c , F.id) (d , F.id)
+    day f (c , F.id) (d , F.id)
 
 map₁ : ∀ {c c' d d'} {C₁ C₂ : Container c c'} {D : Container d d'}
   → (C₁ ⇒ C₂) → C₁ ⊗ D ⇒ C₂ ⊗ D

@@ -79,14 +79,14 @@ module correct {c c' d d' x} (C : Container c c') (D : Container d d') where
 
     to-cong-⊏ : ∀ {X} {u v : Day F G X} → u ⊏ v → to u ≈ to v
     to-cong-⊏
-      {u = day _ _ op _ gb }
+      {u = day op _ gb }
         (DayM.congF (Pw ≡.refl pos≈-F)) = Pw ≡.refl λ (pc , pd) → ≡.cong (λ a → op (a , proj₂ gb pd)) (pos≈-F pc)
     to-cong-⊏
-      {u = day _ _ op fa _ }
+      {u = day op fa _ }
         (DayM.congG (Pw ≡.refl pos≈-G)) = Pw ≡.refl λ (pc , pd) → ≡.cong (λ b → op (proj₂ fa pc , b)) (pos≈-G pd)
     to-cong-⊏
-       {u = day _ _  op  (c , uf) (d , ug)}
-       {v = day _ _  op' (_ , vf) (_ , vg)}
+       {u = day op  (c , uf) (d , ug)}
+       {v = day op' (_ , vf) (_ , vg)}
        (DayM.link linkA linkB op≗)
         = Pw ≡.refl pos≈
       where
@@ -123,7 +123,7 @@ module correct {c c' d d' x} (C : Container c c') (D : Container d d') where
     to-from = refl 
 
     from-to : ∀ {X} {u : Day F G X} → from (to u) Day≈ u
-    from-to {u = u@(day A B op (c , f) (d , g))} = ClEq.return (DayM.link f g (λ _ → ≡.refl))
+    from-to {u = u@(day op (c , f) (d , g))} = ClEq.return (DayM.link f g (λ _ → ≡.refl))
 
     inverseˡ : ∀ {X} {x : H X} {y : Day F G X} → y Day≈ from x → to y ≈ x
     inverseˡ {x = x} {y = y} eq = trans (to-cong eq) to-from
