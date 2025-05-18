@@ -16,7 +16,7 @@ open import Data.Unit.Polymorphic.Base using (⊤; tt)
 
 open import Relation.Binary using (Rel; Setoid; IsEquivalence)
 import Relation.Binary.PropositionalEquality as ≡
-open ≡ using (_≡_)
+open ≡ using (_≡_; _≗_)
 
 open import Data.Container.Core
 
@@ -26,7 +26,7 @@ open import Container.Morphism.Iso using (_⇔_; mk⇔)
 open import Container.Combinator.Monoidal
 open import Container.Combinator.Tensor
 
-open import Effect.Functor.Day using (Day)
+open import Effect.Functor.Day using (Day; day)
 
 open IsEquivalence {{...}}
 
@@ -34,13 +34,12 @@ module correct {c c' d d' x} (C : Container c c') (D : Container d d') where
   open Container C renaming (Shape to S₁; Position to P₁)
   open Container D renaming (Shape to S₂; Position to P₂)
 
-  open import Container.Effect.Functor
+  open import Container.Effect.Functor as ConFunctor
   open import Data.Container.Relation.Binary.Pointwise
     using (Pointwise)
     renaming (_,_ to Pw)
 
   private
-    module DayM = Effect.Functor.Day
 
     F : Set c' → Set (c ⊔ c')
     F = ⟦ C ⟧
@@ -55,81 +54,42 @@ module correct {c c' d d' x} (C : Container c c') (D : Container d d') where
     functorG = makeFunctor D d'
     functorH = makeFunctor (C ⊗ D) x
     
-    Day-setoid : ∀ (X : Set x) → Setoid _ _
-    Day-setoid X = DayM.Day-setoid functorF functorG X
-
-    module _ {X : Set x} where
-      open Setoid (Day-setoid X) using ()
-        renaming (isEquivalence to isEquivalenceDay; _≈_ to _Day≈_) public
-      
-      instance
-        isEquivalenceDay' : IsEquivalence _Day≈_
-        isEquivalenceDay' = isEquivalenceDay
+    open Effect.Functor.Day.Law {x = x} functorF functorG
+      renaming (_≈_ to _Day≈_)
 
     to : ∀ {X} → Day F G X → H X
     to = to-⊗ C D
 
     from : ∀ {X} → H X → Day F G X
     from = from-⊗ C D
-    
-    _⊏_ : ∀ {X : Set x} → Rel (Day F G X) _
-    _⊏_ = DayM._⊏_ functorF functorG
 
-    open DayM using (day)
-
-    to-cong-⊏ : ∀ {X} {u v : Day F G X} → u ⊏ v → to u ≈ to v
-    to-cong-⊏
-      {u = day op _ gb }
-        (DayM.congF (Pw ≡.refl pos≈-F)) = Pw ≡.refl λ (pc , pd) → ≡.cong (λ a → op (a , proj₂ gb pd)) (pos≈-F pc)
-    to-cong-⊏
-      {u = day op fa _ }
-        (DayM.congG (Pw ≡.refl pos≈-G)) = Pw ≡.refl λ (pc , pd) → ≡.cong (λ b → op (proj₂ fa pc , b)) (pos≈-G pd)
-    to-cong-⊏
-       {u = day op  (c , uf) (d , ug)}
-       {v = day op' (_ , vf) (_ , vg)}
-       (DayM.link linkA linkB op≗)
-        = Pw ≡.refl pos≈
-      where
-        pos≈ : (pp : P₁ c × P₂ d)
-          → (let p₁ , p₂ = pp)
-          → op (uf p₁ , ug p₂) ≡ op' (vf p₁ , vg p₂)
-        pos≈ (p₁ , p₂) =
-          begin
-            op (uf p₁ , ug p₂)
-          ≡⟨ op≗ _ ⟩
-            op' (Prod.map linkA linkB (uf p₁ , ug p₂))
-          ≡⟨⟩
-            op' (linkA (uf p₁) , linkB (ug p₂))
-          ≡⟨⟩
-            op' (vf p₁ , vg p₂)
-          ∎
-          where open ≡.≡-Reasoning
+    to-cong-∼ : ∀ {X} {u v : Day F G X} → u ∼ v → to u ≈ to v
+    to-cong-∼ (congF op (Pw ≡.refl pos≈-F) gb) =
+      Pw ≡.refl λ (pc , pd) → ≡.cong (λ a → op (a , proj₂ gb pd)) (pos≈-F pc)
+    to-cong-∼ (congG op fa (Pw ≡.refl pos≈-G)) =
+      Pw ≡.refl λ (pc , pd) → ≡.cong (λ b → op (proj₂ fa pc , b)) (pos≈-G pd)
+    to-cong-∼ (link linkA linkB op≗ (_ , uf) (_ , ug))
+        = Pw ≡.refl (λ (p₁ , p₂) → op≗ (uf p₁ , ug p₂))
 
     import Relation.Binary.Construct.Closure.Equivalence as ClEq
 
     to-cong : ∀ {X} {u v : Day F G X} → u Day≈ v → to u ≈ to v
-    to-cong = ClEq.gfold ≈-isEquivalence to to-cong-⊏
+    to-cong = ClEq.gfold ConFunctor.≈-isEquivalence to to-cong-∼
 
     from-cong : ∀ {X} {hx hy : H X} → hx ≈ hy → from hx Day≈ from hy
-    from-cong
-      { hx = hx@((c , d) , h₁) }
-      { hy = hy@(_       , h₂) }
-      ( Pw ≡.refl pos≈H ) = ClEq.return proof
-      where
-        proof : from hx ⊏ from hy
-        proof = DayM.link F.id F.id pos≈H
+    from-cong (Pw ≡.refl pos≈H) = day-link F.id F.id pos≈H
 
     to-from : ∀ {X} {hx : H X} → to (from hx) ≈ hx
     to-from = refl 
 
     from-to : ∀ {X} {u : Day F G X} → from (to u) Day≈ u
-    from-to {u = u@(day op (c , f) (d , g))} = ClEq.return (DayM.link f g (λ _ → ≡.refl))
+    from-to {u = day _ fa gb} = day-link (proj₂ fa) (proj₂ gb) (λ _ → ≡.refl)
 
     inverseˡ : ∀ {X} {x : H X} {y : Day F G X} → y Day≈ from x → to y ≈ x
-    inverseˡ {x = x} {y = y} eq = trans (to-cong eq) to-from
+    inverseˡ eq = trans (to-cong eq) to-from
 
     inverseʳ : ∀ {X} {x : Day F G X} {y : H X} → y ≈ to x → from y Day≈ x
-    inverseʳ {x = x} {y = y} eq = trans (from-cong eq) from-to
+    inverseʳ eq = trans (from-cong eq) from-to
 
   correct : {X : Set x} → F.Inverse (Day-setoid X) (≈-setoid {Con = C ⊗ D} X)
   correct = record {
