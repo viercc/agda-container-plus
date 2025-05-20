@@ -11,7 +11,7 @@ import Data.Product as Prod
 open import Relation.Binary using (IsEquivalence)
 import Relation.Binary.Reasoning.Setoid as Reasoning
 open import Relation.Binary.PropositionalEquality as ≡
-    using (_≡_)
+    using (_≡_; _≗_)
 
 open import Axiom.UniquenessOfIdentityProofs using (UIP)
 
@@ -26,6 +26,8 @@ private
     a b c s p e : Level
 
 record RawActionInv (Con : Container s p) : Set (s ⊔ p) where
+  open ContainerUtil Con using (S; P)
+
   field
     rawAction : RawAction Con
     _⁻¹ : Op₁ (Shape Con)
@@ -37,6 +39,7 @@ record RawActionInv (Con : Container s p) : Set (s ⊔ p) where
     rawGroup = record { Carrier = S; _≈_ = _≡_; _∙_ = _·_; ε = ε; _⁻¹ = _⁻¹ }
 
 record IsActionInv (Con : Container s p) (raw : RawActionInv Con) : Set (s ⊔ p) where
+  open ContainerUtil Con using (S; P)
   open RawActionInv raw
   
   field
@@ -59,6 +62,9 @@ record ActionInv (Con : Container s p) : Set (s ⊔ p) where
   action : Action Con
   action = record { rawAction = rawAction; isAction = isAction }
 
+  group : Group s s
+  group = record { isGroup = isGroup }
+
 module WithUIP (Con : Container s p) (uip : UIP (Shape Con)) where
   open Container Con renaming (Shape to S; Position to P)
   
@@ -72,21 +78,23 @@ private
   subst-const _ ≡.refl _ = ≡.refl
 
 module util {Con : Container s p} (action : Action Con) where
+  open ContainerUtil Con
   open Action action
   ϕleft-≡-natural : ∀ {x y : S}
-    → (x≡y : x ≡ y) (z : S) {p : P (x · z)}
-    → lift≡ x≡y (ϕleft p) ≡ ϕleft (lift≡ (≡.cong (_· z) x≡y) p)
-  ϕleft-≡-natural ≡.refl _ = ≡.refl
+    → (x≡y : x ≡ y) (z : S)
+    → [ x≡y ] F.∘′ ϕleft ≗ ϕleft F.∘′ [ ≡.cong (_· z) x≡y ]
+  ϕleft-≡-natural ≡.refl _ _ = ≡.refl
 
   indir-identityʳ : ∀ (x : S) {y : S} (eq : y ≡ ε)
     → x · y ≡ x
   indir-identityʳ x eq = ≡.trans (≡.cong (x ·_) eq) (identityʳ x)
 
-  ϕleft-id' : ∀ {x : S} {y : S} (eq : y ≡ ε) (p : P (x · y))
-    → ϕleft p ≡ lift≡ (indir-identityʳ x eq) p
-  ϕleft-id' ≡.refl p = ϕleft-id _ p
+  ϕleft-id' : ∀ {x : S} {y : S} (eq : y ≡ ε)
+    → ϕleft ≗ [ indir-identityʳ x eq ]
+  ϕleft-id' ≡.refl = ϕleft-id _
 
 module reformulation {Con : Container s p} (actionInv : ActionInv Con) where
+  open ContainerUtil Con using (S; P)
   open ActionInv actionInv
   
   open import Data.Container.Morphism as CM
@@ -143,8 +151,8 @@ module reformulation {Con : Container s p} (actionInv : ActionInv Con) where
     ∎
     where open Reasoning ≈-setoid
   
-  left-inverse-r : (x : S) → actLeft x ∘ actLeft (inv x) ≈ CM.id Con
-  left-inverse-r x =
+  left-inverse-Rpre : (x : S) → actLeft x ∘ actLeft (inv x) ≈ CM.id Con
+  left-inverse-Rpre x =
     begin
       actLeft x ∘ actLeft (inv x)
     ≈⟨ left-· x (inv x) ⟨
@@ -169,8 +177,8 @@ module reformulation {Con : Container s p} (actionInv : ActionInv Con) where
     ∎
     where open Reasoning ≈-setoid
   
-  right-inverse-r : (x : S) → actRight x ∘ actRight (inv x) ≈ CM.id Con
-  right-inverse-r x =
+  right-inverse-Rpre : (x : S) → actRight x ∘ actRight (inv x) ≈ CM.id Con
+  right-inverse-Rpre x =
     begin
       actRight x ∘ actRight (inv x)
     ≈⟨ right-· (inv x) x ⟩
@@ -183,96 +191,155 @@ module reformulation {Con : Container s p} (actionInv : ActionInv Con) where
     where open Reasoning ≈-setoid
   
 module standardize {Con : Container s p} (actionInv : ActionInv Con) (uip : UIP (Shape Con)) where
+  open ContainerUtil Con
   open ActionInv actionInv
   
   open import Data.Container.Morphism as CM
     using (_∘_; id)
   open import Container.Morphism.Equality
+  open import Container.Morphism.Iso
 
   open util action
   open WithUIP Con uip using (subst-elim)
 
-  -- synonym
-  inv : S → S
-  inv = _⁻¹
+  private
+    -- Auxiliary definitions
+    inv : S → S
+    inv = _⁻¹
+
+    Q : S → Set p
+    Q s = P (s · inv s)
+
+    reg : S → S
+    reg x = (x · inv x) · x
+
+    regular : (x : S) → reg x ≡ x
+    regular x = ≡.cong (_· x) (inverseʳ x) ⨾ identityˡ x
+
+  -- It is easier to show `Con ⇔ Rpre` and `Rpre ⇔ R`
+  -- separately, rather than direct `Con ⇔ R`.
+
+  Rpre : Container s p
+  Rpre = S ▷ Q
 
   R : Container s p
-  R .Shape = S
-  R .Position s = P (s · inv s)
+  R = S ▷ F.const (P ε)
 
-  Con⇒R : Con ⇒ R
-  Con⇒R .shape = F.id
-  Con⇒R .position = ϕleft
+  Rpre⇔R : Rpre ⇔ R
+  Rpre⇔R = record {
+      to = to; from = from;
+      to-from = to-from; from-to = from-to
+    } where
 
-  -- reg ≗ id
-  reg : S → S
-  reg x = (x · inv x) · x
+    to : Rpre ⇒ R
+    to .shape = F.id
+    to .position {s = s} = [ inverseʳ s ]'
 
-  regular : (x : S) → reg x ≡ x
-  regular x = ≡.trans (≡.cong (_· x) (inverseʳ x)) (identityˡ x)
+    from : R ⇒ Rpre
+    from .shape = F.id
+    from .position {s = s} = [ inverseʳ s ]
 
-  R⇒Con : R ⇒ Con
-  R⇒Con .shape = reg
-  R⇒Con .position = ϕleft
-  
-  R⇔Con-right : R⇒Con ∘ Con⇒R ≈ id Con
-  R⇔Con-right = mk≈ regular eqP
-    where
-      eqP : ∀ (x : S) (p : P (reg x))
-        → ϕleft (ϕleft p) ≡ lift≡ (regular x) p
-      eqP x p = begin
-            ϕleft (ϕleft p)
-          ≡⟨ ϕleft-homo _ _ _ p ⟩
-            ϕleft (lift≡ eq1 p)
-          ≡⟨ ϕleft-id' (inverseˡ x) (lift≡ eq1 p) ⟩
-            lift≡ eq2 (lift≡ eq1 p)
-          ≡⟨ ≡.subst-subst eq1 ⟩
-            lift≡ (≡.trans eq1 eq2) p
-          ≡⟨ ≡.cong (λ eq → lift≡ eq p) (uip _ (regular x)) ⟩
-            lift≡ (regular x) p
-          ∎
-        where
-          open ≡.≡-Reasoning
+    to-from : to ∘ from ≈ id R
+    to-from = mk≈ (λ _ → ≡.refl) (λ s → []-cancel (inverseʳ s))
+    
+    from-to : from ∘ to ≈ id Rpre
+    from-to = mk≈ (λ _ → ≡.refl) (λ s → []'-cancel (inverseʳ s))
 
-          eq1 : reg x ≡ x · (inv x · x)
-          eq1 = assoc _ _ _
+  module R-action where
+    open import Algebra.Properties.Group (group)
+      using (⁻¹-anti-homo-∙; ε⁻¹≈ε)
 
-          eq2 : x · (inv x · x) ≡ x
-          eq2 = indir-identityʳ x (inverseˡ x)
-  
-  R⇔Con-left : Con⇒R ∘ R⇒Con ≈ id R
-  R⇔Con-left = mk≈ regular eqP
-    where
-      eqP : ∀ (x : S)
-        (p : P (reg x · inv (reg x)))
-        → ϕleft (ϕleft p) ≡ ≡.subst (λ s → P (s · inv s)) (regular x) p
-      eqP x p = begin
-            ϕleft (ϕleft p)
-          ≡⟨ ϕleft-homo _ _ _ p ⟩
-            ϕleft (lift≡ eq1 p)
-          ≡⟨ ϕleft-id' xy⁻¹≡ε (lift≡ eq1 p) ⟩
-            lift≡ eq2 (lift≡ eq1 p)
-          ≡⟨ ≡.subst-subst eq1 ⟩
-            lift≡ (≡.trans eq1 eq2) p
-          ≡⟨ ≡.cong (λ eq → lift≡ eq p) (uip _ eqS') ⟩
-            lift≡ eqS' p
-          ≡⟨ ≡.subst-∘ (regular x) ⟨
-            ≡.subst (λ s → P (s · inv s)) (regular x) p
-          ∎
-        where
-          open ≡.≡-Reasoning
+    midε : ∀ (x : S) → ε ≡ (x · ε) · inv x
+    midε x = ≡.sym (≡.cong (_· inv x) (identityʳ x) ⨾ inverseʳ x)
 
-          y : S
-          y = reg x
-          
-          eqS' : y · inv y ≡ x · inv x
-          eqS' = ≡.cong (λ s → s · inv s) (regular x)
+    ψright : ∀ (x : S) → P ε → P ε
+    ψright x = ϕmid F.∘′ [ midε x ]
 
-          xy⁻¹≡ε : x · inv y ≡ ε
-          xy⁻¹≡ε = ≡.trans (≡.cong (λ y → x · inv y) (regular x)) (inverseʳ x)
+    ψright-id : ∀ (q : P ε) → ψright ε q ≡ q
+    ψright-id q = begin
+      ψright ε q
+        ≡⟨⟩
+      ϕright (ϕleft ([ midε ε ] q))
+        ≡⟨ ≡.cong ϕright (ϕleft-id' ε⁻¹≈ε ([ midε ε ] q)) ⟩
+      _
+        ≡⟨ _ ⟩
+      q
+      ∎
+      where
+        open ≡.≡-Reasoning
 
-          eq1 : y · inv y ≡ (x · inv x) · (x · inv y)
-          eq1 = assoc _ _ _
+  Con⇔Rpre : Con ⇔ Rpre
+  Con⇔Rpre = record {
+      to = to;
+      from = from;
+      to-from = to-from;
+      from-to = from-to
+    } where
 
-          eq2 : (x · inv x) · (x · inv y) ≡ x · inv x
-          eq2 = indir-identityʳ (x · inv x) xy⁻¹≡ε
+    to : Con ⇒ Rpre
+    to = F.id ▷ ϕleft
+
+    from : Rpre ⇒ Con
+    from = reg ▷ ϕleft
+    
+    from-to : from ∘ to ≈ id Con
+    from-to = mk≈ regular eqP
+      where
+        eqP : ∀ (x : S) (p : P (reg x))
+          → ϕleft (ϕleft p) ≡ [ regular x ] p
+        eqP x p = begin
+              ϕleft (ϕleft p)
+            ≡⟨ ϕleft-homo _ _ _ p ⟩
+              ϕleft ([ eq1 ] p)
+            ≡⟨ ϕleft-id' (inverseˡ x) ([ eq1 ] p) ⟩
+              [ eq2 ] ([ eq1 ] p)
+            ≡⟨ ≡.subst-subst eq1 ⟩
+              [ eq1 ⨾  eq2 ] p
+            ≡⟨ ≡.cong (λ eq → [ eq ] p) (uip _ (regular x)) ⟩
+              [ regular x ] p
+            ∎
+          where
+            open ≡.≡-Reasoning
+
+            eq1 : reg x ≡ x · (inv x · x)
+            eq1 = assoc _ _ _
+
+            eq2 : x · (inv x · x) ≡ x
+            eq2 = indir-identityʳ x (inverseˡ x)
+    
+    to-from : to ∘ from ≈ id Rpre
+    to-from = mk≈ regular eqP
+      where
+        eqP : ∀ (x : S)
+          (p : P (reg x · inv (reg x)))
+          → ϕleft (ϕleft p) ≡ ≡.subst Q (regular x) p
+        eqP x p = begin
+              ϕleft (ϕleft p)
+            ≡⟨ ϕleft-homo _ _ _ p ⟩
+              ϕleft ([ eq1 ] p)
+            ≡⟨ ϕleft-id' xy⁻¹≡ε ([ eq1 ] p) ⟩
+              [ eq2 ] ([ eq1 ] p)
+            ≡⟨ ≡.subst-subst eq1 ⟩
+              [ eq1 ⨾ eq2 ] p
+            ≡⟨ ≡.cong (λ eq → [ eq ] p) (uip _ eqS') ⟩
+              [ eqS' ] p
+            ≡⟨ ≡.subst-∘ (regular x) ⟨
+              ≡.subst Q (regular x) p
+            ∎
+          where
+            open ≡.≡-Reasoning
+
+            y : S
+            y = reg x
+            
+            eqS' : y · inv y ≡ x · inv x
+            eqS' = ≡.cong (λ s → s · inv s) (regular x)
+
+            xy⁻¹≡ε : x · inv y ≡ ε
+            xy⁻¹≡ε = ≡.trans (≡.cong (λ y → x · inv y) (regular x)) (inverseʳ x)
+
+            eq1 : y · inv y ≡ (x · inv x) · (x · inv y)
+            eq1 = assoc _ _ _
+
+            eq2 : (x · inv x) · (x · inv y) ≡ x · inv x
+            eq2 = indir-identityʳ (x · inv x) xy⁻¹≡ε
