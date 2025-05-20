@@ -12,7 +12,7 @@ open import Data.Product as Prod
   renaming (_,′_ to pair)
 
 open import Relation.Binary.PropositionalEquality as ≡
-  using (_≡_)
+  using (_≡_; _≗_)
 
 open import Data.Container.Core
 
@@ -89,7 +89,7 @@ module ToAction {s p} (Con : Container s p) where
 
     private
       rawAction = toRawAction raw
-      open RawAction rawAction hiding (S; P)
+      open RawAction rawAction
       
       import Algebra.Structures
       open import Algebra.Structures.PatternSynonyms

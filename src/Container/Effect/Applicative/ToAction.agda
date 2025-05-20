@@ -15,7 +15,7 @@ open import Data.Product.Properties
 open import Relation.Binary using (Setoid; IsEquivalence)
 import Relation.Binary.Reasoning.Setoid as Reasoning
 open import Relation.Binary.PropositionalEquality as ≡
-  using (_≡_)
+  using (_≡_; _≗_)
 
 open import Data.Container.Core
 open import Data.Container.Relation.Binary.Pointwise
@@ -84,7 +84,7 @@ Canonical<$> _<$>_ = ∀ {A B} {f : A → B} {x : S} {g : P x → A}
 -- if it can reproduce (_<$>_; pure; _<*>_) up to _≈_ relation.
 record Correctness (rawApplicative : RawApplicative F) (rawAction : RawAction Con) : Set (suc (s ⊔ p)) where
   open RawApplicative rawApplicative
-  open RawAction rawAction hiding (S; P)
+  open RawAction rawAction
 
   field
     <$>-nf : Canonical<$> _<$>_
@@ -105,7 +105,7 @@ module _ (applicative : Applicative ⟦ Con ⟧ _≈_) where
   Correct→IsAction rawAction correct = record {isActionImpl}
     where
       module isActionImpl where
-        open RawAction rawAction hiding (S; P)
+        open RawAction rawAction
         open Correctness correct
 
         open Pointwise
@@ -239,7 +239,7 @@ module _ (applicative : Applicative F _≈_) where
       <*>-nf = <*>-nf
     }
     where
-      open RawAction (extractRawAction rawApplicative) hiding (S; P)
+      open RawAction (extractRawAction rawApplicative)
 
       pure-nf : ∀ {A} {a : A} → pure a ≈ (ε , const a)
       pure-nf {a = a} =

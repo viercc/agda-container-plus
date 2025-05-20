@@ -29,6 +29,8 @@ open import Container.Effect.Functor
 
 module Container.Effect.Applicative.FromAction {s p : Level} {Con : Container s p} where
   
+open ContainerUtil Con
+
 -- Make RawApplicative out of RawAction
 module _ (raw : RawAction Con) where
   private

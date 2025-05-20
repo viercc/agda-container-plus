@@ -4,12 +4,12 @@ module Container.Algebra.Action where
 
 open import Level
 
-open import Function using (_∘_; id; _$_; const)
+open import Function using (_∘_; _∘′_; id; _$_; const)
 
 open import Relation.Binary using (Rel; Setoid; IsEquivalence)
 
 open import Relation.Binary.PropositionalEquality as ≡
-    using (_≡_)
+    using (_≡_; _≗_)
 
 open import Data.Container.Core
 
@@ -19,15 +19,48 @@ private
   variable
     s p e : Level
 
+instance
+  ≗-isEquivalence : ∀ {x y} {X : Set x} {Y : Set y}
+    → IsEquivalence (_≗_ {A = X} {B = Y})
+  ≗-isEquivalence = record
+    { refl = λ _ → ≡.refl;
+      sym = λ x≗y p → ≡.sym (x≗y p);
+      trans = λ x≗y y≗z p → ≡.trans (x≗y p) (y≗z p)
+    }
+
+≗-setoid : ∀ {x y} (X : Set x) (Y : Set y) → Setoid (x ⊔ y) (x ⊔ y)
+≗-setoid X Y = record { isEquivalence = ≗-isEquivalence {X = X} {Y = Y} }
+
+module ContainerUtil (Con : Container s p) where
+  open Container Con renaming (Shape to S; Position to P) public
+  
+  [_] : {x y : S} → x ≡ y → P x → P y
+  [_] = ≡.subst P
+
+  [_]' : {x y : S} → x ≡ y → P y → P x
+  [_]' eq = ≡.subst P (≡.sym eq)
+
+  infixr 8 _⨾_
+  _⨾_ : ∀ {a} {A : Set a} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
+  _⨾_ = ≡.trans
+
+  []-trans : {x y z : S} {eq1 : x ≡ y} {eq2 : y ≡ z} →
+    [ eq2 ] ∘′ [ eq1 ] ≗ [ eq1 ⨾ eq2 ]
+  []-trans {eq1 = eq1} _ = ≡.subst-subst {P = P} eq1
+
+  []-cancel : {x y : S} (eq : x ≡ y) →
+    [ eq ] ∘′ [ eq ]' ≗ id
+  []-cancel eq _ = ≡.subst-subst-sym eq
+  
+  []'-cancel : {x y : S} (eq : x ≡ y) →
+    [ eq ]' ∘′ [ eq ] ≗ id
+  []'-cancel eq _ = ≡.subst-sym-subst eq
+
 -- Action of Con (Shape acting on Position): the data to define Applicative on ⟦ Con ⟧
 record RawAction (Con : Container s p) : Set (s ⊔ p) where
   infixl 7 _·_
 
-  S : Set s
-  S = Shape Con
-
-  P : S → Set p
-  P = Position Con
+  open ContainerUtil Con using (S; P)
 
   field 
     _·_ : Op₂ S
@@ -35,57 +68,105 @@ record RawAction (Con : Container s p) : Set (s ⊔ p) where
     ϕleft : {x y : S} → P (x · y) → P x
     ϕright : {x y : S} → P (x · y) → P y
   
+  ϕmid : {x y z : S} → P ((x · y) · z) → P y
+  ϕmid = ϕright ∘ ϕleft
+
   instance
     rawMonoid : RawMonoid s s
     rawMonoid = record { Carrier = S; _≈_ = _≡_; _∙_ = _·_; ε = ε }
-
--- Equivalence relation defined as Pointwise ≡
-infixl 3 _≗_
-
-_≗_ : ∀ {ℓ} {X Y : Set ℓ} → Rel (X → Y) ℓ
-_≗_ f g = ∀ p → f p ≡ g p
-
-≗-isEquivalence : ∀ {ℓ} {X Y : Set ℓ} → IsEquivalence (_≗_ {X = X} {Y = Y})
-≗-isEquivalence = record
-  { refl = λ _ → ≡.refl;
-    sym = λ x≗y p → ≡.sym (x≗y p);
-    trans = λ x≗y y≗z p → ≡.trans (x≗y p) (y≗z p)
-  }
 
 -- Laws on Action Con
 record IsAction (Con : Container s p) (raw : RawAction Con) : Set (s ⊔ p) where
   open RawAction raw
   
+  open ContainerUtil Con
+
   field
     instance
       isMonoid : IsMonoid _≡_ _·_ ε
   
   open IsMonoid isMonoid using (assoc; identityˡ; identityʳ) public
   
-  lift≡ : {x y : S} → (x ≡ y) → P x → P y
-  lift≡ = ≡.subst P
-
-  lift≡' : {x y : S} → (x ≡ y) → P y → P x
-  lift≡' eq = ≡.subst P (≡.sym eq)
-  
   field
-    ϕleft-id : (x : S) → ϕleft ≗ lift≡ (identityʳ x)
+    ϕleft-id : (x : S) → ϕleft ≗ [ identityʳ x ]
     
-    ϕright-id : (x : S) → ϕright ≗ lift≡ (identityˡ x)
+    ϕright-id : (x : S) → ϕright ≗ [ identityˡ x ]
     
     ϕleft-homo : (x y z : S)
-      → ϕleft ∘ ϕleft ≗ ϕleft ∘ lift≡ (assoc x y z)
+      → ϕleft ∘ ϕleft ≗ ϕleft ∘ [ assoc x y z ]
     
     ϕright-homo : (x y z : S)
-      → ϕright ≗ ϕright ∘ ϕright ∘ lift≡ (assoc x y z)
+      → ϕright ≗ ϕright ∘ ϕright ∘ [ assoc x y z ]
     
     ϕinterchange : (x y z : S)
-      → ϕright ∘ ϕleft ≗ ϕleft ∘ ϕright ∘ lift≡ (assoc x y z)
+      → ϕright ∘ ϕleft ≗ ϕleft ∘ ϕright ∘ [ assoc x y z ]
 
 record Action (Con : Container s p) : Set (s ⊔ p) where
   field
-    rawAction : RawAction Con
-    isAction : IsAction Con rawAction
+    instance
+      rawAction : RawAction Con
+      isAction : IsAction Con rawAction
   
   open RawAction rawAction public
   open IsAction isAction public
+
+module Action-properties {Con : Container s p} (action : Action Con) where
+  open ContainerUtil Con
+  open Action action
+
+  identity-mid : (x : S) → (ε · x · ε) ≡ x
+  identity-mid x = identityʳ _ ⨾ identityˡ x
+
+  ϕmid-id : (x : S) → ϕmid ≗ [ identity-mid x ]
+  ϕmid-id x p = begin
+      ϕmid p
+    ≡⟨⟩
+      ϕright (ϕleft p)
+    ≡⟨ ϕright-id x (ϕleft p) ⟩
+      [ identityˡ x ] (ϕleft p)
+    ≡⟨ ≡.cong [ _ ] (ϕleft-id (ε · x) p) ⟩
+      [ identityˡ x ] ([ identityʳ (ε · x) ] p)
+    ≡⟨ ≡.subst-subst (identityʳ (ε · x)) ⟩
+      [ identity-mid x ] p
+    ∎
+    where open ≡.≡-Reasoning
+  
+  assoc-mid : (x' x y z z' : S) → x' · (x · y · z) · z' ≡ (x' · x) · y · (z · z')
+  assoc-mid x' x y z z' =
+    begin
+      x' · (x · y · z) · z'
+    ≡⟨ ≡.cong (_· z') (≡.sym (assoc x' (x · y) z)) ⟩
+      (x' · (x · y) · z) · z'
+    ≡⟨ assoc (x' · (x · y)) z z' ⟩ 
+      (x' · (x · y)) · (z · z')
+    ≡⟨ ≡.cong (_· (z · z')) (≡.sym (assoc x' x y)) ⟩ 
+      (x' · x) · y · (z · z')
+    ∎
+    where open ≡.≡-Reasoning
+  
+  -- ϕmid-mid : (x' x y z z' : S) → ϕmid ∘ ϕmid ≗ ϕmid ∘ [ assoc-mid x' x y z z' ]
+  -- ϕmid-mid x' x y z z' p = _
+
+module _ {C D : Container s p} (actionC : Action C) (actionD : Action D) where
+  private
+    module AC = Action actionC 
+    module AD = Action actionD
+  
+  open Container C renaming (Shape to C₀; Position to C₁)
+  open Container D renaming (Shape to D₀; Position to D₁)
+  open RawAction {{...}}
+
+  record IsActionMorphism (α : C ⇒ D) : Set (s ⊔ p) where
+    open _⇒_ α renaming (shape to f; position to f#)
+
+    field
+      -- f is monoid homomorphism
+      f-ε : f ε ≡ ε
+      f-· : ∀ (x y : C₀) → f x · f y ≡ f (x · y)
+
+      -- preservation of ϕleft,ϕright
+      f#-ϕleft : ∀ (x y : C₀) (p : D₁ (f x · f y))
+        → f# (ϕleft p) ≡ ϕleft (f# (≡.subst D₁ (f-· x y) p))
+      
+      f#-ϕright : ∀ (x y : C₀) (p : D₁ (f x · f y))
+        → f# (ϕright p) ≡ ϕright (f# (≡.subst D₁ (f-· x y) p))
