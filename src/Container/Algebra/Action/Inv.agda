@@ -77,22 +77,6 @@ private
     → (p : B) → ≡.subst (F.const B) x≡y p ≡ p
   subst-const _ ≡.refl _ = ≡.refl
 
-module util {Con : Container s p} (action : Action Con) where
-  open ContainerUtil Con
-  open Action action
-  ϕleft-≡-natural : ∀ {x y : S}
-    → (x≡y : x ≡ y) (z : S)
-    → [ x≡y ] F.∘′ ϕleft ≗ ϕleft F.∘′ [ ≡.cong (_· z) x≡y ]
-  ϕleft-≡-natural ≡.refl _ _ = ≡.refl
-
-  indir-identityʳ : ∀ (x : S) {y : S} (eq : y ≡ ε)
-    → x · y ≡ x
-  indir-identityʳ x eq = ≡.trans (≡.cong (x ·_) eq) (identityʳ x)
-
-  ϕleft-id' : ∀ {x : S} {y : S} (eq : y ≡ ε)
-    → ϕleft ≗ [ indir-identityʳ x eq ]
-  ϕleft-id' ≡.refl = ϕleft-id _
-
 module reformulation {Con : Container s p} (actionInv : ActionInv Con) where
   open ContainerUtil Con using (S; P)
   open ActionInv actionInv
@@ -193,13 +177,13 @@ module reformulation {Con : Container s p} (actionInv : ActionInv Con) where
 module standardize {Con : Container s p} (actionInv : ActionInv Con) (uip : UIP (Shape Con)) where
   open ContainerUtil Con
   open ActionInv actionInv
+  open Action-properties (action)
   
   open import Data.Container.Morphism as CM
     using (_∘_; id)
   open import Container.Morphism.Equality
   open import Container.Morphism.Iso
 
-  open util action
   open WithUIP Con uip using (subst-elim)
 
   private
@@ -256,17 +240,60 @@ module standardize {Con : Container s p} (actionInv : ActionInv Con) (uip : UIP 
     ψright x = ϕmid F.∘′ [ midε x ]
 
     ψright-id : ∀ (q : P ε) → ψright ε q ≡ q
-    ψright-id q = begin
-      ψright ε q
-        ≡⟨⟩
-      ϕright (ϕleft ([ midε ε ] q))
-        ≡⟨ ≡.cong ϕright (ϕleft-id' ε⁻¹≈ε ([ midε ε ] q)) ⟩
-      _
-        ≡⟨ _ ⟩
-      q
+    ψright-id q =
+      begin
+        ψright ε q
+      ≡⟨⟩
+        (ϕmid F.∘′ [ midε ε ]) q
+      ≡⟨ ϕmid-id-with ≡.refl ε⁻¹≈ε ([ midε ε ] q) ⟩
+       [ ≡.cong₂ _·_ ≡.refl ε⁻¹≈ε ⨾ identity-mid ε ] ([ midε ε ] q)
+      ≡⟨ []-trans {eq1 = midε ε} q ⟩
+       [ midε ε ⨾ ≡.cong₂ _·_ ≡.refl ε⁻¹≈ε ⨾ identity-mid ε ] q
+       -- I might be able to reduce the (eq : ε · ε · ε⁻¹ ≡ ε) to refl in this case,
+       -- but I don't bother and use UIP
+      ≡⟨ subst-elim _ q ⟩
+        q
       ∎
       where
         open ≡.≡-Reasoning
+    
+    ψright-homo : ∀ (x y : S) (q : P ε) → ψright y (ψright x q) ≡ ψright (x · y) q
+    ψright-homo x y q =
+      begin
+        ψright y (ψright x q)
+      ≡⟨⟩
+        (ϕmid F.∘′ [ midε y ] F.∘′ ϕmid F.∘′ [ eq1 ]) q
+      ≡⟨ ≡.cong ϕmid (ϕmid-≡-natural ≡.refl (midε y) ≡.refl _) ⟩
+       (ϕmid F.∘′ ϕmid F.∘′ [ eq2 ] F.∘′ [ eq1 ]) q
+      ≡⟨ ≡.cong (ϕmid F.∘′ ϕmid) (≡.subst-subst eq1) ⟩
+       (ϕmid F.∘′ ϕmid F.∘′ [ eq1 ⨾ eq2 ]) q
+      ≡⟨ ϕmid-mid x y ε (inv y) (inv x) _ ⟩
+       (ϕmid F.∘′ [ eq3 ] F.∘′ [ eq1 ⨾ eq2 ]) q
+      ≡⟨ ≡.cong ϕmid (≡.subst-subst (eq1 ⨾ eq2)) ⟩
+       (ϕmid F.∘′ [ (eq1 ⨾ eq2) ⨾ eq3 ]) q
+      ≡⟨ ϕmid-≡-natural ≡.refl ≡.refl (≡.sym (⁻¹-anti-homo-∙ x y)) _ ⟩
+       (ϕmid F.∘′ [ eq4 ] F.∘′ [ (eq1 ⨾ eq2) ⨾ eq3 ]) q
+      ≡⟨ ≡.cong ϕmid (≡.subst-subst ((eq1 ⨾ eq2) ⨾ eq3)) ⟩
+       (ϕmid F.∘′ [ ((eq1 ⨾ eq2) ⨾ eq3) ⨾ eq4 ]) q
+      ≡⟨ ≡.cong (λ eq → ϕmid ([ eq ] q)) (uip _ _) ⟩
+       (ϕmid F.∘′ [ midε (x · y) ]) q
+      ≡⟨⟩
+        ψright (x · y) q
+      ∎
+      where
+        open ≡.≡-Reasoning
+
+        eq1 : ε ≡ x · ε · inv x 
+        eq1 = midε x
+
+        eq2 : x · ε · inv x ≡ x · (y · ε · inv y) · inv x
+        eq2 = ≡.cong₂ _·_ (≡.cong₂ _·_ ≡.refl (midε y)) ≡.refl
+
+        eq3 : x · (y · ε · inv y) · inv x ≡ (x · y) · ε · (inv y · inv x)
+        eq3 = assoc-mid x y ε (inv y) (inv x)
+
+        eq4 : (x · y) · ε · (inv y · inv x) ≡ (x · y) · ε · inv (x · y)
+        eq4 = ≡.cong₂ _·_ ≡.refl (≡.sym (⁻¹-anti-homo-∙ x y))
 
   Con⇔Rpre : Con ⇔ Rpre
   Con⇔Rpre = record {
@@ -291,7 +318,7 @@ module standardize {Con : Container s p} (actionInv : ActionInv Con) (uip : UIP 
               ϕleft (ϕleft p)
             ≡⟨ ϕleft-homo _ _ _ p ⟩
               ϕleft ([ eq1 ] p)
-            ≡⟨ ϕleft-id' (inverseˡ x) ([ eq1 ] p) ⟩
+            ≡⟨ ϕleft-id-with (inverseˡ x) ([ eq1 ] p) ⟩
               [ eq2 ] ([ eq1 ] p)
             ≡⟨ ≡.subst-subst eq1 ⟩
               [ eq1 ⨾  eq2 ] p
@@ -305,7 +332,7 @@ module standardize {Con : Container s p} (actionInv : ActionInv Con) (uip : UIP 
             eq1 = assoc _ _ _
 
             eq2 : x · (inv x · x) ≡ x
-            eq2 = indir-identityʳ x (inverseˡ x)
+            eq2 = ≡.cong (x ·_) (inverseˡ x) ⨾ identityʳ x
     
     to-from : to ∘ from ≈ id Rpre
     to-from = mk≈ regular eqP
@@ -317,7 +344,7 @@ module standardize {Con : Container s p} (actionInv : ActionInv Con) (uip : UIP 
               ϕleft (ϕleft p)
             ≡⟨ ϕleft-homo _ _ _ p ⟩
               ϕleft ([ eq1 ] p)
-            ≡⟨ ϕleft-id' xy⁻¹≡ε ([ eq1 ] p) ⟩
+            ≡⟨ ϕleft-id-with xy⁻¹≡ε ([ eq1 ] p) ⟩
               [ eq2 ] ([ eq1 ] p)
             ≡⟨ ≡.subst-subst eq1 ⟩
               [ eq1 ⨾ eq2 ] p

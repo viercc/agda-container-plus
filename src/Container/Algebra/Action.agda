@@ -51,7 +51,7 @@ module ContainerUtil (Con : Container s p) where
   []-cancel : {x y : S} (eq : x ≡ y) →
     [ eq ] ∘′ [ eq ]' ≗ id
   []-cancel eq _ = ≡.subst-subst-sym eq
-  
+
   []'-cancel : {x y : S} (eq : x ≡ y) →
     [ eq ]' ∘′ [ eq ] ≗ id
   []'-cancel eq _ = ≡.subst-sym-subst eq
@@ -114,6 +114,34 @@ module Action-properties {Con : Container s p} (action : Action Con) where
   open ContainerUtil Con
   open Action action
 
+  -- utils
+  ϕleft-≡-natural : ∀ {x x' y y' : S}
+    → (eq1 : x ≡ x') (eq2 : y ≡ y')
+    → [ eq1 ] ∘′ ϕleft ≗ ϕleft ∘′ [ ≡.cong₂ _·_ eq1 eq2 ]
+  ϕleft-≡-natural ≡.refl ≡.refl _ = ≡.refl
+
+  indir-identityʳ : ∀ (x : S) {y : S} (eq : y ≡ ε)
+    → x · y ≡ x
+  indir-identityʳ x eq = ≡.cong (x ·_) eq ⨾ identityʳ x
+
+  ϕleft-id-with : ∀ {x : S} {y : S} (eq : y ≡ ε)
+    → ϕleft ≗ [ ≡.cong (x ·_) eq ⨾ identityʳ x ]
+  ϕleft-id-with ≡.refl = ϕleft-id _
+
+  ϕright-≡-natural : ∀ {x x' y y' : S}
+    → (eq1 : x ≡ x') (eq2 : y ≡ y')
+    → [ eq2 ] ∘′ ϕright ≗ ϕright ∘′ [ ≡.cong₂ _·_ eq1 eq2 ]
+  ϕright-≡-natural ≡.refl ≡.refl _ = ≡.refl
+
+  ϕright-id-with : ∀ {x : S} {y : S} (eq : x ≡ ε)
+    → ϕright ≗ [ ≡.cong (_· y) eq ⨾ identityˡ y ]
+  ϕright-id-with ≡.refl = ϕright-id _
+
+  ϕmid-≡-natural : ∀ {x x' y y' z z' : S}
+    → (eq1 : x ≡ x') (eq2 : y ≡ y') (eq3 : z ≡ z')
+    → [ eq2 ] ∘′ ϕmid ≗ ϕmid ∘′ [ ≡.cong₂ _·_ (≡.cong₂ _·_ eq1 eq2) eq3 ]
+  ϕmid-≡-natural ≡.refl ≡.refl ≡.refl _ = ≡.refl
+
   identity-mid : (x : S) → (ε · x · ε) ≡ x
   identity-mid x = identityʳ _ ⨾ identityˡ x
 
@@ -131,21 +159,80 @@ module Action-properties {Con : Container s p} (action : Action Con) where
     ∎
     where open ≡.≡-Reasoning
   
+  ϕmid-id-with : ∀ {x y z : S} (eq1 : x ≡ ε) (eq3 : z ≡ ε)
+    → ϕmid ≗ [ ≡.cong₂ _·_ (≡.cong (_· y) eq1) eq3 ⨾ identity-mid y ]
+  ϕmid-id-with {y = y} ≡.refl ≡.refl = ϕmid-id y
+
   assoc-mid : (x' x y z z' : S) → x' · (x · y · z) · z' ≡ (x' · x) · y · (z · z')
   assoc-mid x' x y z z' =
+      ≡.cong₂ _·_ (≡.sym (assoc x' (x · y) z)) ≡.refl ⨾
+      assoc (x' · (x · y)) z z' ⨾
+      ≡.cong₂ _·_ (≡.sym (assoc x' x y)) ≡.refl
+  
+  ϕright-homo⁻¹ : (x y z : S) →
+    ϕright ∘ ϕright ≗ ϕright ∘ [ assoc x y z ]'
+  ϕright-homo⁻¹ x y z p =
     begin
-      x' · (x · y · z) · z'
-    ≡⟨ ≡.cong (_· z') (≡.sym (assoc x' (x · y) z)) ⟩
-      (x' · (x · y) · z) · z'
-    ≡⟨ assoc (x' · (x · y)) z z' ⟩ 
-      (x' · (x · y)) · (z · z')
-    ≡⟨ ≡.cong (_· (z · z')) (≡.sym (assoc x' x y)) ⟩ 
-      (x' · x) · y · (z · z')
+      (ϕright ∘ ϕright) p
+    ≡⟨ ≡.cong (ϕright ∘ ϕright) ([]-cancel (assoc x y z) p) ⟨
+      (ϕright ∘ ϕright) (([ assoc x y z ] ∘ [ assoc x y z ]') p)
+    ≡⟨ ϕright-homo x y z ([ assoc x y z ]' p) ⟨
+      ϕright ([ assoc x y z ]' p)
     ∎
     where open ≡.≡-Reasoning
   
-  -- ϕmid-mid : (x' x y z z' : S) → ϕmid ∘ ϕmid ≗ ϕmid ∘ [ assoc-mid x' x y z z' ]
-  -- ϕmid-mid x' x y z z' p = _
+  ϕinterchange⁻¹ : (x y z : S) →
+    ϕleft ∘ ϕright ≗ ϕright ∘ ϕleft ∘ [ assoc x y z ]'
+  ϕinterchange⁻¹ x y z p =
+    begin
+      (ϕleft ∘ ϕright) p
+    ≡⟨ ≡.cong (ϕleft ∘ ϕright) ([]-cancel (assoc x y z) p) ⟨
+      (ϕleft ∘ ϕright) (([ assoc x y z ] ∘ [ assoc x y z ]') p)
+    ≡⟨ ϕinterchange x y z ([ assoc x y z ]' p) ⟨
+      ϕright (ϕleft ([ assoc x y z ]' p))
+    ∎
+    where open ≡.≡-Reasoning
+
+  ϕmid-mid : (x' x y z z' : S) → ϕmid ∘ ϕmid ≗ ϕmid ∘ [ assoc-mid x' x y z z' ]
+  ϕmid-mid x' x y z z' p =
+    -- p : P (x' · (x · y · z) · z')
+    begin
+      (ϕmid ∘ ϕmid) p
+    ≡⟨⟩
+      (ϕright ∘ ϕleft ∘ ϕright ∘ ϕleft) p
+    ≡⟨ ≡.cong ϕright (ϕinterchange⁻¹ x' (x · y) z (ϕleft p)) ⟩
+      (ϕright ∘ ϕright ∘ ϕleft ∘ [ eq1 ]' ∘ ϕleft) p
+    ≡⟨ ≡.cong (ϕright ∘ ϕright ∘ ϕleft) (ϕleft-≡-natural (≡.sym eq1) ≡.refl _) ⟩
+      (ϕright ∘ ϕright ∘ ϕleft ∘ ϕleft ∘ [ eq1' ] ) p
+    ≡⟨ ≡.cong (ϕright ∘ ϕright) (ϕleft-homo (x' · (x · y)) z z' _) ⟩
+      (ϕright ∘ ϕright ∘ ϕleft ∘ [ eq2 ] ∘ [ eq1' ] ) p
+    ≡⟨ ≡.cong (ϕright ∘ ϕright ∘ ϕleft) (≡.subst-subst eq1') ⟩
+      (ϕright ∘ ϕright ∘ ϕleft ∘ [ eq1' ⨾ eq2 ] ) p
+    ≡⟨ ϕright-homo⁻¹ x' x y _ ⟩
+      (ϕright ∘ [ eq3 ]' ∘ ϕleft ∘ [ eq1' ⨾ eq2 ] ) p
+    ≡⟨ ≡.cong ϕright (ϕleft-≡-natural (≡.sym eq3) ≡.refl _) ⟩
+      (ϕright ∘ ϕleft ∘ [ eq3' ] ∘ [ eq1' ⨾ eq2 ] ) p
+    ≡⟨ ≡.cong (ϕright ∘ ϕleft) (≡.subst-subst (eq1' ⨾ eq2)) ⟩
+      (ϕright ∘ ϕleft ∘ [ (eq1' ⨾ eq2) ⨾ eq3' ] ) p
+    ≡⟨ ≡.cong (λ eq → (ϕright ∘ ϕleft ∘ [ eq ]) p) (≡.trans-assoc eq1') ⟩
+      (ϕright ∘ ϕleft ∘ [ eq1' ⨾ eq2 ⨾ eq3' ] ) p
+    ≡⟨⟩
+      (ϕright ∘ ϕleft ∘ [ assoc-mid x' x y z z' ]) p
+    ∎
+    where
+      open ≡.≡-Reasoning
+      eq1 = assoc x' (x · y) z
+
+      eq1' : (x' · (x · y · z)) · z' ≡ ((x' · (x · y)) · z) · z'
+      eq1' = ≡.cong₂ _·_ (≡.sym eq1) ≡.refl 
+
+      eq2 : ((x' · (x · y)) · z) · z' ≡ (x' · (x · y)) · (z · z')
+      eq2 = assoc (x' · (x · y)) z z'
+
+      eq3 = assoc x' x y
+
+      eq3' : (x' · (x · y)) · (z · z') ≡ ((x' · x) · y) · (z · z')
+      eq3' = ≡.cong₂ _·_ (≡.sym eq3) ≡.refl
 
 module _ {C D : Container s p} (actionC : Action C) (actionD : Action D) where
   private
