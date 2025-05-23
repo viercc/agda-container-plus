@@ -303,3 +303,10 @@ module standardize {Con : Container s p} (originalActionInv : ActionInv Con) (ui
 
             eq2 : (x · inv x) · (x · inv y) ≡ x · inv x
             eq2 = indir-identityʳ (x · inv x) xy⁻¹≡ε
+
+  Con⇒Std : Con ⇒ Std
+  Con⇒Std = R⇔Std ._⇔_.to ∘ Con⇔R ._⇔_.to
+
+  -- TODO: Implement this
+  isActionMorphism : IsActionMorphism original.action StdAction.action Con⇒Std
+  isActionMorphism = _
