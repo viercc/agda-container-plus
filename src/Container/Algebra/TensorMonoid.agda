@@ -56,8 +56,62 @@ record Monoid {s p} (Con : Container s p) : Set (s ⊔ p) where
   open RawMonoid rawMonoid public
   open IsMonoid isMonoid public
 
--- TODO: TensorMonoid ↔ Action
---   (probably I should rename Action to TensorMonoid.Uustalu)
+module FromAction {s p} (Con : Container s p) where
+  open import Container.Algebra.Action
+  open Container Con renaming (Shape to S; Position to P)
+
+  module _ (raw : RawAction Con) where
+    open RawAction raw
+    private
+      module impl where
+        unit : Id {s} {p} ⇒ Con
+        unit = F.const ε ▷ F.const tt
+
+        mult : Con ⊗ Con ⇒ Con
+        mult .shape (x , y) = x · y
+        mult .position {s = x , y} p = ϕleft p , ϕright p
+
+    fromRawAction : RawMonoid Con
+    fromRawAction = record { impl }
+  
+  module _ {raw : RawAction Con} (law : IsAction Con raw) where
+    open RawAction raw
+    open IsAction law renaming
+      (identityˡ to S-identity-l;
+      identityʳ to S-identity-r;
+      assoc to S-assoc)
+
+    raw' : RawMonoid Con
+    raw' = fromRawAction raw
+    
+    open RawMonoid raw'
+
+    private
+      module impl where
+        left-unit : mult ∘ map₁ unit ≈ unitLeft
+        left-unit = mk≈
+          (λ (_ , x) → S-identity-l x)
+          (λ (_ , x) p → ≡.cong (tt ,_) (ϕright-id x p))
+        
+        right-unit : mult ∘ map₂ unit ≈ unitRight
+        right-unit = mk≈
+          (λ (x , _) → S-identity-r x)
+          (λ (x , _) p → ≡.cong (_, tt) (ϕleft-id x p))
+        
+        assoc : mult ∘ map₁ mult ≈ mult ∘ map₂ mult ∘ assocʳ
+        assoc = mk≈
+          (λ ((x , y) , z) → S-assoc x y z)
+          (λ ((x , y) , z) → eqP x y z)
+          where
+            eqP : ∀ (x y z : S) (p : P ((x · y) · z)) → _
+            eqP x y z p =
+              let eq1 = ϕleft-homo x y z p
+                  eq2 = ϕinterchange x y z p
+                  eq3 = ϕright-homo x y z p
+              in ≡.cong₂ _,_ (≡.cong₂ _,_ eq1 eq2) eq3 
+    
+    fromIsAction : IsMonoid Con raw'
+    fromIsAction = record { impl }
 
 module ToAction {s p} (Con : Container s p) where
   open import Container.Algebra.Action
