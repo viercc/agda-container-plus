@@ -93,6 +93,51 @@ module _ {s₁ p₁ s₂ p₂} {C₁ : Container s₁ p₁} {C₂ : Container s�
   ≈-setoid : Setoid (s₁ ⊔ s₂ ⊔ p₁ ⊔ p₂) (s₁ ⊔ s₂ ⊔ p₁ ⊔ p₂)
   ≈-setoid = record { isEquivalence = isEquivalence }
 
+module _ {s₁ p₁ s₂ p₂ s₃ p₃}
+  {C₁ : Container s₁ p₁}
+  {C₂ : Container s₂ p₂}
+  {C₃ : Container s₃ p₃} where
+  import Data.Container.Morphism as CM
+
+  ∘-cong₁ : {α₁ α₂ : C₂ ⇒ C₃} (_ : α₁ ≈ α₂) (β : C₁ ⇒ C₂) → α₁ CM.∘ β ≈ α₂ CM.∘ β
+  ∘-cong₁ (mk≈ shapeα posα) (g ▷ g#) =
+    mk≈ (λ c₁ → shapeα (g c₁)) (λ c₁ p₃ → ≡.cong g# (posα (g c₁) p₃))
+  
+  ∘-cong₂ : (α : C₂ ⇒ C₃) {β₁ β₂ : C₁ ⇒ C₂} (_ : β₁ ≈ β₂) → α CM.∘ β₁ ≈ α CM.∘ β₂
+  ∘-cong₂
+    (f ▷ f#)
+    {β₁ = g₁ ▷ g₁#} {β₂ = g₂ ▷ g₂#} (mk≈ shapeβ posβ)
+      = mk≈ eqS eqP
+    where
+      open Container C₁ renaming (Shape to S₁; Position to P₁)
+      open Container C₂ renaming (Shape to S₂; Position to P₂)
+      open Container C₃ renaming (Shape to S₃; Position to P₃)
+
+      eqS : (c₁ : S₁) → f (g₁ c₁) ≡ f (g₂ c₁)
+      eqS c₁ = ≡.cong f (shapeβ c₁)
+
+      f#' : (c₂ : S₂) → P₃ (f c₂) → P₂ c₂
+      f#' c₂ = f# {c₂}
+
+      eqP : (c : S₁) (p₃ : P₃ (f (g₁ c)))
+        → g₁# (f# p₃) ≡ g₂# (f# (≡.subst P₃ (eqS c) p₃))
+      eqP c p₃ = begin
+          g₁# (f# p₃)
+        ≡⟨ posβ c (f# p₃) ⟩
+          g₂# (≡.subst P₂ eq (f# p₃))
+        ≡⟨⟩
+          g₂# (≡.subst P₂ eq (f#' (g₁ c) p₃))
+        ≡⟨ ≡.cong g₂# (≡.subst-application P₃ {B₂ = P₂} {f = f} f#' eq) ⟩
+          g₂# (f#' (g₂ c) (≡.subst P₃ (≡.cong f eq) p₃))
+        ≡⟨⟩
+          g₂# (f# (≡.subst P₃ (eqS c) p₃))
+        ∎
+        where
+          eq : g₁ c ≡ g₂ c
+          eq = shapeβ c
+
+          open ≡.≡-Reasoning
+
 module _ {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ : Container s₂ p₂) where
   -- Variant of _≈_ taking C₁, C₂ as explicit argument
   Eq : Rel (C₁ ⇒ C₂) (s₁ ⊔ s₂ ⊔ p₁ ⊔ p₂)
