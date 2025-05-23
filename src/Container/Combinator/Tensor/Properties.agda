@@ -181,3 +181,27 @@ module _ {c c' d d' e e'} {C : Container c c'} {D : Container d d'} {E : Contain
 
   symmetric : braid₁ ≈ braid₂
   symmetric = refl
+
+-- Conversion into Comp
+module _ {c c' d d'} where
+  open import Container.Combinator.Compose as Comp
+    using (Comp)
+  open import Data.Container.Relation.Unary.Any
+    using () renaming (any to mk◇)
+  open import Data.Container.Morphism using (_∘_)
+  open import Container.Morphism.Equality using (_≈_)
+  
+  ⊗⇒Comp : (C : Container c c') (D : Container d d') → C ⊗ D ⇒ Comp C D
+  ⊗⇒Comp _ _ .shape (c , d) = c , λ _ → d
+  ⊗⇒Comp _ _ .position {s = c , d} (mk◇ (pc , pd)) = pc , pd
+
+  -- Note: `⊗⇒Comp C D` is neither mono nor epi in general
+  -- (but *sometimes* it is, depending on the choice of C and D)
+
+  ⊗⇒Comp-nat₁ : ∀ {C₁ C₂ : Container c c'} {D : Container d d'}
+    → (α : C₁ ⇒ C₂) → ⊗⇒Comp C₂ D ∘ map₁ α ≈ Comp.map₁ α ∘ ⊗⇒Comp C₁ D
+  ⊗⇒Comp-nat₁ _ = refl
+
+  ⊗⇒Comp-nat₂ : ∀ {C : Container c c'} {D₁ D₂ : Container d d'}
+    → (β : D₁ ⇒ D₂) → ⊗⇒Comp C D₂ ∘ map₂ β ≈ Comp.map₂ β ∘ ⊗⇒Comp C D₁
+  ⊗⇒Comp-nat₂ _ = refl
