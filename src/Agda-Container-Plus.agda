@@ -3,6 +3,7 @@ import Container.Algebra.Action.Inv
 import Container.Algebra.TensorMonoid
 import Container.Algebra.Monad
 import Container.Algebra.Monad.Uustalu
+import Container.Algebra.Monad.Monomial
 
 import Container.Combinator.Compose
 import Container.Combinator.Compose.Properties

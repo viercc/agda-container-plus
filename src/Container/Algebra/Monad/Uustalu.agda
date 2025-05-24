@@ -40,18 +40,22 @@ record RawMonad (C : Container s p) : Set (s ⊔ p) where
     ↖ : {s : S} → {v : P s → S} → P (s • v) → P s
     ↗ : {s : S} → {v : P s → S} → (p : P (s • v)) → P (v (↖ p))
   
-record IsMonad (C : Container s p) (raw : RawMonad C) : Set (s ⊔ p) where
-  open RawMonad raw
-
-  diag : ∀ {s : S} {v : P s → S} (w : (p₁ : P s) → P (v p₁) → S)
+  diag : {s : S} {v : P s → S} (w : (p₁ : P s) → P (v p₁) → S)
     → P (s • v) → S
   diag {s} {v} w p = w (↖ p) (↗ p)
+
+  zip : {s : S} (v : P s → S) (w : (p₁ : P s) → P (v p₁) → S) →
+    P s → S
+  zip v w p = v p • w p
+  
+record IsMonad (C : Container s p) (raw : RawMonad C) : Set (s ⊔ p) where
+  open RawMonad raw
 
   field
     •-ε : ∀ (s : S) → s • F.const ε ≡ s
     ε-• : ∀ (s : S) → ε • F.const s ≡ s
     •-• : ∀ (s : S) (v : P s → S) (w : (p : P s) → P (v p) → S)
-      → (s • v) • diag w ≡ s • (λ p → v p • w p)
+      → (s • v) • diag w ≡ s • zip v w
     
     ↖-inner-ε : ∀ {s : S} (p : P (s • F.const ε))
       → ↖ p ≡ ≡.subst P (•-ε s) p
@@ -59,16 +63,16 @@ record IsMonad (C : Container s p) (raw : RawMonad C) : Set (s ⊔ p) where
       → ↗ p ≡ ≡.subst P (ε-• s) p
     
     ↖-↖ : ∀ {s : S} {v : P s → S} {w : (p : P s) → P (v p) → S}
-      → {p : P ((s • v) • diag w)} {q : P (s • (λ q₁ → v q₁ • w q₁))}
+      → {p : P ((s • v) • diag w)} {q : P (s • zip v w)}
       → (p≡q : ≡.subst P (•-• s v w) p ≡ q)
       → ↖ (↖ p) ≡ ↖ q
     ↗-↖ : ∀ {s : S} {v : P s → S} {w : (p : P s) → P (v p) → S}
-      → {p : P ((s • v) • diag w)} {q : P (s • (λ q₁ → v q₁ • w q₁))}
+      → {p : P ((s • v) • diag w)} {q : P (s • zip v w)}
       → (p≡q : ≡.subst P (•-• s v w) p ≡ q)
       → (let p₁₁≡q₁ = ↖-↖ p≡q)
       → ≡.subst (λ r → P (v r)) p₁₁≡q₁ (↗ (↖ p)) ≡ ↖ (↗ q)
     ↗-↗ : ∀ {s : S} {v : P s → S} {w : (p : P s) → P (v p) → S}
-      → {p : P ((s • v) • diag w)} {q : P (s • (λ q₁ → v q₁ • w q₁))}
+      → {p : P ((s • v) • diag w)} {q : P (s • zip v w)}
       → (p≡q : ≡.subst P (•-• s v w) p ≡ q)
       → (let p₁₁≡q₁ = ↖-↖ p≡q)
           (let p₁₂≡q₂₁ = ↗-↖ p≡q)

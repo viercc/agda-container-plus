@@ -73,11 +73,6 @@ module WithUIP (Con : Container s p) (uip : UIP (Shape Con)) where
     → ≡.subst P eq p ≡ p
   subst-elim eq p = ≡.cong (λ eq' → ≡.subst P eq' p) (uip eq ≡.refl)
 
-private
-  subst-const : ∀ {a b} {A : Set a} {x y : A} (B : Set b) (x≡y : x ≡ y)
-    → (p : B) → ≡.subst (F.const B) x≡y p ≡ p
-  subst-const _ ≡.refl _ = ≡.refl
-
 module standardize {Con : Container s p} (originalActionInv : ActionInv Con) (uip : UIP (Shape Con)) where
   open ContainerUtil Con
   module original =  ActionInv originalActionInv
