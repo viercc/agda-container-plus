@@ -1,4 +1,4 @@
-{-# OPTIONS --without-K --safe #-}
+{-# OPTIONS --without-K #-}
 
 -- Monad (uustalu-style) on "monomial" containers
 module Container.Algebra.Monad.Monomial where
@@ -67,6 +67,41 @@ record IsMonad' (S : Set s) (I : Set p) (raw : RawMonad' S I) : Set (s ⊔ p) wh
       → (i : I)
       → (let j = ql s u i)
       → qr (s • v) Δw i ≡ qr (v j) (w j) (qr s u i)
+
+-- I'm not sure if I should add these properties to the IsMonad'
+record Congruences {S : Set s} {I : Set p} (raw : RawMonad' S I) : Set (s ⊔ p) where
+  open RawMonad' raw
+  field
+    •-cong₂ : ∀ {s : S} {v₁ v₂ : I → S} → (v₁ ≗ v₂) → s • v₁ ≡ s • v₂
+    ql-cong₂ : ∀ {s : S} {v₁ v₂ : I → S} → (v₁ ≗ v₂) → ql s v₁ ≗ ql s v₂
+    qr-cong₂ : ∀ {s : S} {v₁ v₂ : I → S} → (v₁ ≗ v₂) → qr s v₁ ≗ qr s v₂
+
+module IsMonad'-consequences
+  {S : Set s} {I : Set p} {raw' : RawMonad' S I}
+  (congs : Congruences raw')
+  (isMonad' : IsMonad' S I raw') where
+  open RawMonad' raw'
+  open Congruences congs
+  open IsMonad' isMonad'
+  
+  ε-ε : ε • F.const ε ≡ ε
+  ε-ε = •-ε ε
+
+  ε•-ε• : ∀ (w : I → I → S)
+    → (ε • λ i → ε • w i) ≡ ε • λ i → w i i
+  ε•-ε• w =
+    begin
+      (ε • λ i → ε • w i)
+    ≡⟨ •-• ε (F.const ε) w ⟨
+      (ε • F.const ε) • diag ε (F.const ε) w
+    ≡⟨ ≡.cong (_• diag ε (F.const ε) w) ε-ε ⟩
+      ε • diag ε (F.const ε) w
+    ≡⟨⟩
+      (ε • λ i → w (ql ε (F.const ε) i) (qr ε (F.const ε) i))
+    ≡⟨ •-cong₂ (λ i → ≡.cong₂ w (ql-inner-ε ε i) (qr-outer-ε ε i)) ⟩
+      (ε • λ i → w i i)
+    ∎
+    where open ≡.≡-Reasoning
 
 -- Utilities
 
