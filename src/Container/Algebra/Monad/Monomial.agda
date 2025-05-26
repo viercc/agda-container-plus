@@ -1,4 +1,4 @@
-{-# OPTIONS --without-K #-}
+{-# OPTIONS --without-K --safe #-}
 
 -- Monad (uustalu-style) on "monomial" containers
 module Container.Algebra.Monad.Monomial where

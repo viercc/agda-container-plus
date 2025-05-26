@@ -1,5 +1,4 @@
--- TODO: Re-add --safe
-{-# OPTIONS --without-K #-}
+{-# OPTIONS --without-K --safe #-}
 
 -- StateLike monad, a subclass of Monomial monad
 module Container.Algebra.Monad.StateLike where
