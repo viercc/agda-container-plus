@@ -154,6 +154,24 @@ module ≈-correctness {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ 
     Eq⟦⟧ : Rel (⟦ C ⟧ X) (s ⊔ p ⊔ x)
     Eq⟦⟧ = CEq.Eq (≡.setoid X) C
   
+  ⟪-⟫-respects-Eq⟦⟧ : ∀ (ff : C₁ ⇒ C₂) {x} {X : Set x} → 
+    ∀ (xs ys : ⟦ C₁ ⟧ X) → Eq⟦⟧ C₁ xs ys → Eq⟦⟧ C₂ (⟪ ff ⟫ xs) (⟪ ff ⟫ ys)
+  ⟪-⟫-respects-Eq⟦⟧ ff (x , vx) (y , vy) (mkPointwise eqS eqV) = mkPointwise eqS' eqV'
+    where
+      open _⇒_ ff renaming
+        (shape to f; position to f#)
+      
+      eqS' : f x ≡ f y
+      eqS' = ≡.cong f eqS
+
+      transferSubst : ∀ (p : P₂ (f x))
+        → ≡.subst P₁ eqS (f# p) ≡ f# (≡.subst P₂ eqS' p)
+      transferSubst p = ≡.subst-application P₂ (λ z p → f# {z} p) eqS
+
+      eqV' : ∀ (p : P₂ (f x))
+        → vx (f# p) ≡ vy (f# (≡.subst P₂ eqS' p))
+      eqV' p = ≡.trans (eqV (f# p)) (≡.cong vy (transferSubst p))
+
   -- Pointwise Eq⟦⟧ on ⟪⟫
   Eq⟪⟫ : ∀ (ff gg : C₁ ⇒ C₂) {x} {X : Set x} → Set (s₁ ⊔ s₂ ⊔ p₁ ⊔ p₂ ⊔ x)
   Eq⟪⟫ ff gg {X = X} = ∀ (xs : ⟦ C₁ ⟧ X) → Eq⟦⟧ C₂ (⟪ ff ⟫ xs) (⟪ gg ⟫ xs)
