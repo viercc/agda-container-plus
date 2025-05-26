@@ -8,7 +8,6 @@ open import Level
 import Function as F
 import Data.Product as Prod
 open Prod using (proj₁; proj₂; _,_)
-open import Data.Unit.Polymorphic.Base using (⊤; tt)
 
 open import Relation.Binary.PropositionalEquality as ≡
   using (_≡_; _≗_)
