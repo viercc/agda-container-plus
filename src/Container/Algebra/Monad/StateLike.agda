@@ -47,6 +47,8 @@ record IsStateLike (M : Set m) (I : Set p) (raw : RawStateLike M I) : Set (m ⊔
   zip v w i = v i • w i
 
   field
+    •-cong₂ : ∀ {m : M} {f g : I → M} → f ≗ g → m • f ≡ m • g
+
     •-ε : ∀ (m : M) → m • F.const ε ≡ m
     ε-• : ∀ (m : M) → ε • F.const m ≡ m
     •-• : ∀ (m : M) (v : I → M) (w : I → I → M)
@@ -73,6 +75,9 @@ module _ {M : Set m} {I : Set p} where
   toIsMonad' : (rawSL : RawStateLike M I)
     → IsStateLike M I rawSL → IsMonad' M I (toRawMonad' rawSL)
   toIsMonad' rawSL isSL = record {
+      •-cong₂ = •-cong₂;
+      ql-cong₂ = λ _ _ → ≡.refl;
+      qr-cong₂ = λ _ _ → ≡.refl;
       ε-• = ε-•;
       •-ε = •-ε;
       •-• = •-•;
@@ -194,16 +199,14 @@ module DecEqLemma {ℓ} {I : Set ℓ} (_≟_ : DecidableEquality I) where
 
 module Monad'+DecEq {M : Set m} {I : Set p}
   {raw : RawMonad' M I}
-  (congs : Congruences raw)
   (law : IsMonad' M I raw)
   (_≟_ : DecidableEquality I) where
   open RawMonad'+DecEq raw _≟_ public
-  open Congruences congs public
   open IsMonad' law public
   open IfLemma
   open DecEqLemma _≟_
 
-  open IsMonad'-consequences congs law
+  open IsMonad'-consequences law
 
   at-ε : ∀ (i : I) → at ε i ≡ ε
   at-ε i =

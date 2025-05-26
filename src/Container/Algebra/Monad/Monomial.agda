@@ -40,6 +40,10 @@ record IsMonad' (S : Set s) (I : Set p) (raw : RawMonad' S I) : Set (s ⊔ p) wh
   zip v w i = v i • w i
 
   field
+    •-cong₂ : ∀ {s : S} {v₁ v₂ : I → S} → (v₁ ≗ v₂) → s • v₁ ≡ s • v₂
+    ql-cong₂ : ∀ {s : S} {v₁ v₂ : I → S} → (v₁ ≗ v₂) → ql s v₁ ≗ ql s v₂
+    qr-cong₂ : ∀ {s : S} {v₁ v₂ : I → S} → (v₁ ≗ v₂) → qr s v₁ ≗ qr s v₂
+
     •-ε : ∀ (s : S) → s • F.const ε ≡ s
     ε-• : ∀ (s : S) → ε • F.const s ≡ s
     •-• : ∀ (s : S) (v : I → S) (w : I → I → S)
@@ -68,20 +72,10 @@ record IsMonad' (S : Set s) (I : Set p) (raw : RawMonad' S I) : Set (s ⊔ p) wh
       → (let j = ql s u i)
       → qr (s • v) Δw i ≡ qr (v j) (w j) (qr s u i)
 
--- I'm not sure if I should add these properties to the IsMonad'
-record Congruences {S : Set s} {I : Set p} (raw : RawMonad' S I) : Set (s ⊔ p) where
-  open RawMonad' raw
-  field
-    •-cong₂ : ∀ {s : S} {v₁ v₂ : I → S} → (v₁ ≗ v₂) → s • v₁ ≡ s • v₂
-    ql-cong₂ : ∀ {s : S} {v₁ v₂ : I → S} → (v₁ ≗ v₂) → ql s v₁ ≗ ql s v₂
-    qr-cong₂ : ∀ {s : S} {v₁ v₂ : I → S} → (v₁ ≗ v₂) → qr s v₁ ≗ qr s v₂
-
 module IsMonad'-consequences
   {S : Set s} {I : Set p} {raw' : RawMonad' S I}
-  (congs : Congruences raw')
   (isMonad' : IsMonad' S I raw') where
   open RawMonad' raw'
-  open Congruences congs
   open IsMonad' isMonad'
   
   ε-ε : ε • F.const ε ≡ ε
@@ -122,7 +116,10 @@ private
 -- Monomial Monad on (S, I) ↔ Monad on (S, const I)
 
 module _ {S : Set s} {I : Set p} where
-  fromRawMonad : RawMonad (S ▷ F.const I) → RawMonad' S I
+  C : Container s p
+  C = S ▷ F.const I
+
+  fromRawMonad : RawMonad C → RawMonad' S I
   fromRawMonad raw = record {
       ε = ε;
       _•_ = _•_;
@@ -131,7 +128,7 @@ module _ {S : Set s} {I : Set p} where
     }
     where open RawMonad raw
   
-  toRawMonad : RawMonad' S I → RawMonad (S ▷ F.const I)
+  toRawMonad : RawMonad' S I → RawMonad C
   toRawMonad raw' = record {
       ε = ε;
       _•_ = _•_; 
@@ -140,9 +137,19 @@ module _ {S : Set s} {I : Set p} where
     }
     where open RawMonad' raw'
 
-  fromIsMonad : (raw : RawMonad (S ▷ F.const I))
-    → IsMonad (S ▷ F.const I) raw → IsMonad' S I (fromRawMonad raw)
+  fromIsMonad : (raw : RawMonad C)
+    → IsMonad C raw → IsMonad' S I (fromRawMonad raw)
   fromIsMonad raw isMonad = record {
+      •-cong₂ = λ v₁≗v₂ → law.•-cong (law.mkEq ≡.refl v₁≗v₂);
+      ql-cong₂ = λ v₁≗v₂ p →
+        let eq = law.mkEq ≡.refl v₁≗v₂ in
+        law.↖-cong eq p ⨾
+        ≡.cong ↖ (subst-const I (law.•-cong eq) p) ;
+      qr-cong₂ = λ v₁≗v₂ p →
+        let eq = law.mkEq ≡.refl v₁≗v₂ in
+        ≡.sym (subst-const I _ (↗ p)) ⨾
+        law.↗-cong eq p ⨾
+        ≡.cong ↗ (subst-const I (law.•-cong eq) p) ;
       •-ε = law.•-ε;
       ε-• = law.ε-•;
       •-• = law.•-•;
@@ -159,19 +166,42 @@ module _ {S : Set s} {I : Set p} where
     where
       open RawMonad raw
       module law = IsMonad isMonad
+      module newRaw = RawMonad' (fromRawMonad raw)
   
   toIsMonad : (raw' : RawMonad' S I)
-    → IsMonad' S I raw' → IsMonad (S ▷ F.const I) (toRawMonad raw')
+    → IsMonad' S I raw' → IsMonad C (toRawMonad raw')
   toIsMonad raw' isMonad' = record { impl }
     where
       raw = toRawMonad raw'
       open RawMonad' raw' hiding (ε; _•_)
       open RawMonad raw hiding (S; P)
+      open EqualityDefinition C
       module law' = IsMonad' isMonad'
 
       module impl where
         P : S → Set p
         P = F.const I
+        
+        •-cong : ∀ {cx cy : ⟦ C ⟧ S}
+          → Eq cx cy → mm cx ≡ mm cy
+        •-cong (mkEq ≡.refl v₁≗v₂) = law'.•-cong₂ v₁≗v₂
+
+        ↖-cong : ∀ {cx cy : ⟦ C ⟧ S}
+          → (eq : Eq cx cy)
+          → ∀ (p : P (mm cx)) → ≡.subst P (shapeEq eq) (↖ p) ≡ ↖ (≡.subst P (•-cong eq) p)
+        ↖-cong (mkEq ≡.refl v₁≗v₂) p =
+          law'.ql-cong₂ v₁≗v₂ p ⨾ ≡.sym (≡.cong ↖ (subst-const I _ p))
+
+        ↗-cong : ∀ {cx cy : ⟦ C ⟧ S}
+          → (eq : Eq cx cy)
+          → ∀ (p : P (mm cx))
+          → ≡.subst P (cong-apply (proj₂ cx) (proj₂ cy) (positionEq eq) (↖-cong eq p)) (↗ p)
+              ≡
+            ↗ (≡.subst P (•-cong eq) p)
+        ↗-cong (mkEq ≡.refl v₁≗v₂) p =
+          subst-const I _ (↗ p) ⨾
+          law'.qr-cong₂ v₁≗v₂ p ⨾
+          ≡.sym (≡.cong ↗ (subst-const I _ p))
 
         •-ε : ∀ (s : S) → s • F.const ε ≡ s
         •-ε = law'.•-ε

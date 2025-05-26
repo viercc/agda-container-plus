@@ -5,6 +5,7 @@ module Container.Algebra.Monad.Uustalu where
 open import Level
 
 import Function as F
+open F using (_∘′_)
 import Data.Product as Prod
 open Prod using (proj₁; proj₂; _,_)
 open import Data.Unit.Polymorphic.Base using (⊤; tt)
@@ -18,7 +19,7 @@ open C◇ using (◇) renaming (any to mk◇)
 
 open import Data.Container.Morphism using (id; _∘_)
 
-open import Container.Morphism.Equality
+open import Container.Morphism.Equality hiding (Eq)
 open import Container.Morphism.Iso
 
 open import Container.Combinator.Compose as Compose using (Id; Comp)
@@ -47,11 +48,56 @@ record RawMonad (C : Container s p) : Set (s ⊔ p) where
   zip : {s : S} (v : P s → S) (w : (p₁ : P s) → P (v p₁) → S) →
     P s → S
   zip v w p = v p • w p
-  
+
+  -- Alternative notation for _•_
+  mm : ⟦ C ⟧ S → S
+  mm (s , v) = s • v
+
+cong-apply : ∀ {a b c} {A : Set a} {B : Set b} {C : Set c}
+  → (f : A → C) (g : B → C) {h : A → B} → (f ≗ g ∘′ h)
+  → {x : A} {y : B} → (h x ≡ y)
+  → f x ≡ g y
+cong-apply f g f≗gh {x = x} hx≡y = ≡.trans (f≗gh x) (≡.cong g hx≡y)
+
+module EqualityDefinition (C : Container s p) where
+  open import Relation.Binary using (Rel; IsEquivalence)
+  open Container C renaming (Shape to S; Position to P)
+  import Data.Container.Relation.Binary.Equality.Setoid as CEq
+  open import Data.Container.Relation.Binary.Pointwise
+    using (Pointwise)
+    renaming (_,_ to mkEq)
+    public
+
+  Eq : Rel (⟦ C ⟧ S) _
+  Eq = CEq.Eq (≡.setoid S) C
+
+  shapeEq : ∀ {cx cy} → Eq cx cy → proj₁ cx ≡ proj₁ cy
+  shapeEq = Pointwise.shape
+
+  positionEq : ∀ {cx cy : ⟦ C ⟧ S} → (eq : Eq cx cy) → proj₂ cx ≗ proj₂ cy ∘′ ≡.subst P (shapeEq eq)
+  positionEq = Pointwise.position
+
+  instance
+    Eq-isEquivalence : IsEquivalence Eq
+    Eq-isEquivalence = CEq.isEquivalence (≡.setoid S) C
+
 record IsMonad (C : Container s p) (raw : RawMonad C) : Set (s ⊔ p) where
   open RawMonad raw
+  open EqualityDefinition C public
 
   field
+    •-cong : ∀ {cx cy : ⟦ C ⟧ S}
+      → Eq cx cy → mm cx ≡ mm cy
+    ↖-cong : ∀ {cx cy : ⟦ C ⟧ S}
+      → (eq : Eq cx cy)
+      → ∀ (p : P (mm cx)) → ≡.subst P (shapeEq eq) (↖ p) ≡ ↖ (≡.subst P (•-cong eq) p)
+    ↗-cong : ∀ {cx cy : ⟦ C ⟧ S}
+      → (eq : Eq cx cy)
+      → ∀ (p : P (mm cx))
+      → ≡.subst P (cong-apply (proj₂ cx) (proj₂ cy) (positionEq eq) (↖-cong eq p)) (↗ p)
+          ≡
+        ↗ (≡.subst P (•-cong eq) p)
+
     •-ε : ∀ (s : S) → s • F.const ε ≡ s
     ε-• : ∀ (s : S) → ε • F.const s ≡ s
     •-• : ∀ (s : S) (v : P s → S) (w : (p : P s) → P (v p) → S)
@@ -165,3 +211,15 @@ to-Uustalu rawMonad = record {rawMonadImpl'}
       ↗ {s} {v} p = proj₂ (◇.proof (position join {s = s , v } p))
  
 -- TODO: to-Uustalu-law
+-- 
+-- [Note] we can't simply have to-Uustalu-law
+-- 
+--   ∀ {...} (isMonad : MM.IsMonad _ _) → IsMonad _ _
+-- 
+-- because of "congruent" laws (•-cong, ...).
+-- 
+-- They can't be represented in terms of `Comp`,
+-- because these congruences corresponds to
+-- hypothetical `Setoid`-based `Container`,
+-- and `join : Comp C C ⇒ C` being well-defined morphism
+-- between `Setoid`-based `Container`.
