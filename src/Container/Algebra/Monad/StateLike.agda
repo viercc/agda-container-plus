@@ -89,29 +89,3 @@ module _ {M : Set m} {I : Set p} where
     where
       open RawStateLike rawSL
       open IsStateLike isSL
-
--- Given these two conditions:
--- 
--- * Type `I` has decidable equality
--- * There are inverse(s) of `ql ε v` for all `v : I → M`
--- 
--- A Monomial monad have isomorphic StateLike monad.
-
-module _ {M : Set m} {I : Set p} {raw : RawMonad' M I}
-  (law : IsMonad' M I raw) (_≟_ : DecidableEquality I) where
-  open RawMonad' raw
-  open IsMonad' law
-  open import Container.Algebra.Monad.Monomial.DecidableEquality law _≟_
-  
-  toStateLike : ((I → M) → I → I) → RawStateLike M I
-  toStateLike ql⁻¹ = record {
-      ε = ε;
-      _•_ = λ m v → m • (v F.∘′ σ m);
-      t = λ i m → qr m (F.const ε) (σ⁻¹ m i)
-    }
-    where
-      σ : M → I → I
-      σ m = ql ε (m at_)
-
-      σ⁻¹ : M → I → I
-      σ⁻¹ m = ql⁻¹ (m at_) 

@@ -1,13 +1,17 @@
 {-# OPTIONS --without-K --safe #-}
 
--- Monad (uustalu-style) on "monomial" containers
+-- Monad (uustalu-style) on "monomial" containers.
+-- 
+-- Naming convention is to add ' (single quote) to
+-- corresponding names of Container.Algebra.Monad.
 module Container.Algebra.Monad.Monomial where
 
 open import Level
 
 import Function as F
+open F using (_∘′_)
 import Data.Product as Prod
-open Prod using (proj₁; proj₂; _,_)
+open Prod using (_×_; proj₁; proj₂; _,_)
 
 open import Relation.Binary.PropositionalEquality as ≡
   using (_≡_; _≗_)
@@ -70,6 +74,76 @@ record IsMonad' (S : Set s) (I : Set p) (raw : RawMonad' S I) : Set (s ⊔ p) wh
       → (i : I)
       → (let j = ql s u i)
       → qr (s • v) Δw i ≡ qr (v j) (w j) (qr s u i)
+
+-- Constructor of monomial container
+
+_▷′_ : Set s → Set p → Container s p
+_▷′_ S I = S ▷ F.const I
+
+open import Container.Morphism.Equality using (_≈_)
+open import Container.Morphism.Iso
+
+record IsMonadMorphism' {S T : Set s} {I J : Set p}
+  (rawC : RawMonad' S I)
+  (rawD : RawMonad' T J)
+  (τ : (S ▷′ I) ⇒ (T ▷′ J))
+  : Set (s ⊔ p) where
+
+  module C = RawMonad' rawC
+  module D = RawMonad' rawD
+  
+  τ₀ : S → T
+  τ₀ = _⇒_.shape τ
+  
+  τ₁ : S → J → I
+  τ₁ s = _⇒_.position τ {s}
+
+  field
+    preserve-ε : τ₀ C.ε ≡ D.ε
+    preserve-• : ∀ (s : S) (v : I → S)
+      → τ₀ (s C.• v) ≡ τ₀ s D.• (τ₀ ∘′ v ∘′ τ₁ s)
+    preserve-ql : ∀ (s : S) (v : I → S)
+      → (let Cql = C.ql s v)
+        (let Dql = D.ql (τ₀ s) (τ₀ ∘′ v ∘′ τ₁ s))
+      → (j : J)
+      → Cql (τ₁ (s C.• v) j) ≡ τ₁ s (Dql j)
+    preserve-qr : ∀ (s : S) (v : I → S)
+      → (let Cqr = C.qr s v)
+        (let Dql = D.ql (τ₀ s) (τ₀ ∘′ v ∘′ τ₁ s))
+        (let Dqr = D.qr (τ₀ s) (τ₀ ∘′ v ∘′ τ₁ s))
+      → (j : J)
+      → Cqr (τ₁ (s C.• v) j) ≡ τ₁ (v (τ₁ s (Dql j))) (Dqr j)
+
+module _ {S T : Set s} {I J : Set p}
+  (iso : (S ▷′ I) ⇔ (T ▷′ J)) where
+  open _⇔_ iso
+  open _⇒_ to renaming (shape to f; position to f#)
+  open _⇒_ from renaming (shape to g; position to g#)
+
+  transferRawMonad' : RawMonad' S I → RawMonad' T J
+  transferRawMonad' raw = record {
+      ε = f ε;
+      _•_ = λ t v → f (g t • g ∘′ v ∘′ g# {t});
+      ql = λ t v →
+        let s = g t
+            u = v ∘′ g# {t}
+        in g# {t} ∘′ ql s (g ∘′ u) ∘′ f# {s};
+      qr = λ t v j →
+        let s = g t
+            u = v ∘′ g# {t}
+            i = f# {s} j
+            i₁ = ql s (g ∘′ u) i
+            i₂ = qr s (g ∘′ u) i
+        in g# {u i₁} i₂
+    }
+    where
+      open RawMonad' raw
+
+  transferIsMonad' : { raw : RawMonad' S I } (law : IsMonad' S I raw)
+    → IsMonad' T J (transferRawMonad' raw)
+  transferIsMonad' raw = record {
+
+    }
 
 module IsMonad'-consequences
   {S : Set s} {I : Set p} {raw' : RawMonad' S I}

@@ -56,6 +56,39 @@ record IsMonad (C : Container s p) (raw : RawMonad C) : Set (s ⊔ p) where
     right-unit : join ∘ map₂ unit ∘ ununitRight ≈ id C
     assoc : join ∘ map₁ join ≈ join ∘ map₂ join ∘ assocʳ
 
+record IsMonadMorphism {s p} {C D : Container s p}
+  (rawC : RawMonad C)
+  (rawD : RawMonad D)
+  (τ : C ⇒ D)
+   : Set (s ⊔ p) where
+  
+  module MC = RawMonad rawC
+  module MD = RawMonad rawD
+
+  field
+    preserve-unit : τ ∘ MC.unit ≈ MD.unit
+    preserve-join : τ ∘ MC.join ≈ MD.join ∘ map₁ τ ∘ map₂ τ
+
+module _ {s p} {C D : Container s p}
+  (iso : C ⇔ D) where
+
+  open _⇔_ iso
+  open IsEquivalence {{...}}
+
+  transferRawMonad : RawMonad C → RawMonad D
+  transferRawMonad rawC = record {
+      unit = to ∘ RawMonad.unit rawC;
+      join = to ∘ RawMonad.join rawC ∘ map₁ from ∘ map₂ from
+    }
+  
+  -- TODO: transferIsMonad
+  -- This is currently impossible and its root cause is
+  -- S in (S ▷ P) being Set rather than Setoid.
+  -- 
+  -- transferIsMonad : {rawC : RawMonad C} (lawC : IsMonad C rawC)
+  --   → IsMonad D (transferRawMonad rawC)
+  -- transferIsMonad {rawC} lawC = _
+
 -- Monad implies TensorMonoid
 
 module _ {C : Container s p} (raw : RawMonad C) where
