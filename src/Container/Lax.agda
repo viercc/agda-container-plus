@@ -277,9 +277,10 @@ module _
   {C* : LaxContainer c c'} {D* : LaxContainer d d'} {E* : LaxContainer e e'}
   where
 
-  module LC = LaxContainer C*
-  module LD = LaxContainer D*
-  module LE = LaxContainer E*
+  private
+    module LC = LaxContainer C*
+    module LD = LaxContainer D*
+    module LE = LaxContainer E*
   
   open LC using () renaming (_∼_ to _∼₁_; S to C₀)
   open LE using () renaming (_∼_ to _∼₃_; P to E₁)
