@@ -57,6 +57,20 @@ module props {s p} (C* : LaxContainer s p) where
     → (eq : x ≡ y) → ≡.subst P eq p ≡ subst (reflexive eq) p
   subst-reflexive ≡.refl = subst-refl
 
+  subst-trans-reflexive-comm : {a : Level} {A : Set a} {x y : A} {u v : A → S}
+    (eq₁ : (z : A) → u z ∼ v z) → (eq₂ : x ≡ y) →
+    subst (reflexive (≡.cong v eq₂)) F.∘′ subst (eq₁ x)
+      ≗ subst (eq₁ y) F.∘′ subst (reflexive (≡.cong u eq₂))
+  subst-trans-reflexive-comm {x = x} {y = .x} eq₁ ≡.refl p =
+    begin
+      subst refl (subst (eq₁ x) p)
+    ≡⟨ subst-refl ⟨
+      subst (eq₁ x) p
+    ≡⟨ ≡.cong (subst (eq₁ x)) subst-refl ⟩
+      subst (eq₁ x) (subst refl p)
+    ∎
+    where open ≡.≡-Reasoning
+
 -- View a Container as LaxContainer equipped with
 -- strict (propositional) equality: _≡_
 
