@@ -69,17 +69,20 @@ module LaxEquality (C* : LaxContainer s p) (A* : Setoid ℓ ℓ) where
         where open Reasoning A*
   
   sym : ∀ {cx cy} → LaxEq cx cy → LaxEq cy cx
-  sym {cx = sx , vx } {cy = sy , vy} (mkLaxEq eq posEq-xy)
-    = mkLaxEq (LC.sym eq) proof
+  sym {cx = sx , vx } {cy = sy , vy} (mkLaxEq eq posEq)
+    = mkLaxEq eq⁻ posEq⁻
     where
-      proof : ∀ (p : P sy) → vy p ∼ₐ vx (LC.subst (LC.sym eq) p)
-      proof p =
+      eq⁻ : sy ∼ sx
+      eq⁻ = LC.sym eq
+
+      posEq⁻ : ∀ (p : P sy) → vy p ∼ₐ vx (LC.subst (LC.sym eq) p)
+      posEq⁻ p =
         begin
           vy p
         ≈⟨ Setoid.reflexive A* (≡.cong vy (LC.subst-subst-sym eq)) ⟨
-          vy (LC.subst eq (LC.subst (LC.sym eq) p))
-        ≈⟨ posEq-xy _ ⟨
-          vx (LC.subst (LC.sym eq) p)
+          vy (LC.subst eq (LC.subst eq⁻ p))
+        ≈⟨ posEq (LC.subst eq⁻ p) ⟨
+          vx (LC.subst eq⁻ p)
         ∎
         where open Reasoning A*
 
@@ -93,6 +96,8 @@ module LaxEquality (C* : LaxContainer s p) (A* : Setoid ℓ ℓ) where
   
   setoid : Setoid (s ⊔ p ⊔ ℓ) (s ⊔ p ⊔ ℓ)
   setoid = record { isEquivalence = isEquivalence}
+
+open LaxEquality using (mkLaxEq) public
 
 module _ (C* : LaxContainer s p) where
   private
