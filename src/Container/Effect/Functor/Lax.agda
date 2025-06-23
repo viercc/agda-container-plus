@@ -15,6 +15,11 @@ open import Data.Product as Prod using (proj₁; proj₂; _,_)
 
 open import Data.Container.Core
 import Data.Container.Properties as ContProp
+import Data.Container.Relation.Binary.Equality.Setoid as CEq
+open import Data.Container.Relation.Binary.Pointwise
+  using (Pointwise)
+  renaming (_,_ to mkEq)
+  public
 
 open import Effect.Functor
 open import Effect.Functor.Law
@@ -98,6 +103,20 @@ module LaxEquality (C* : LaxContainer s p) (A* : Setoid ℓ ℓ) where
   setoid = record { isEquivalence = isEquivalence}
 
 open LaxEquality using (mkLaxEq) public
+open LaxEquality using (LaxEq)
+
+-- Eq defined in the stdlib
+-- (Data.Container.Relation.Binary.Equality.Setoid)
+-- is a special case of LaxEq where the container is
+-- strict.
+
+toEq : ∀ {s p a} {C : Container s p} {A* : Setoid a a}
+  → ∀ {cx cy} → LaxEq (strict C) A* cx cy → CEq.Eq A* C cx cy
+toEq (mkLaxEq shapeEq positionEq) = mkEq shapeEq positionEq
+
+fromEq : ∀ {s p a} {C : Container s p} {A* : Setoid a a}
+  → ∀ {cx cy} → CEq.Eq A* C cx cy → LaxEq (strict C) A* cx cy
+fromEq (mkEq shapeEq positionEq) = mkLaxEq shapeEq positionEq
 
 module _ (C* : LaxContainer s p) where
   private
@@ -106,7 +125,7 @@ module _ (C* : LaxContainer s p) where
 
   private
     LaxEq-≡ : ∀ {x} {X : Set x} → Rel (⟦ C ⟧ X) (s ⊔ p ⊔ x)
-    LaxEq-≡ {X = X} = LaxEquality.LaxEq C* (≡.setoid X)
+    LaxEq-≡ {X = X} = LaxEq C* (≡.setoid X)
 
     instance
       LaxEq-≡-isEquivalence : ∀ {x} {X : Set x} → IsEquivalence (LaxEq-≡ {X = X})
@@ -121,7 +140,6 @@ module _ (C* : LaxContainer s p) where
       _≈_ = LaxEq-≡
 
       open RawFunctor (Strict.makeRawFunctor C ℓ)
-      open LaxEquality using (mkLaxEq)
 
       <$>-cong : ∀ {A B : Set ℓ} (f : A → B) {u₁ u₂ : F A} → (u₁ ≈ u₂) → (f <$> u₁ ≈ f <$> u₂)
       <$>-cong f (mkLaxEq eqS eqV) = mkLaxEq eqS (λ p → ≡.cong f (eqV p))

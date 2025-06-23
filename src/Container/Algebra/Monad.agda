@@ -69,6 +69,13 @@ record IsMonadMorphism {s p} {C D : Container s p}
     preserve-unit : τ ∘ MC.unit ≈ MD.unit
     preserve-join : τ ∘ MC.join ≈ MD.join ∘ map₁ τ ∘ map₂ τ
 
+open import Container.Lax
+open import Container.Combinator.Compose.Lax
+
+WellDefinedJoin : {C : Container s p} (rawC : RawMonad C)
+  → Set (s ⊔ p)
+WellDefinedJoin {C = C} rawC = WellDefined (laxComp C C) (strict C) (RawMonad.join rawC)
+
 module _ {s p} {C D : Container s p}
   (iso : C ⇔ D) where
 
@@ -81,13 +88,6 @@ module _ {s p} {C D : Container s p}
       join = to ∘ RawMonad.join rawC ∘ map₁ from ∘ map₂ from
     }
   
-  open import Container.Lax
-  open import Container.Combinator.Compose.Lax
-
-  WellDefinedJoin : {C : Container s p} (rawC : RawMonad C)
-    → Set (s ⊔ p)
-  WellDefinedJoin {C = C} rawC = WellDefined (laxComp C C) (strict C) (RawMonad.join rawC)
-
   open import Container.Combinator.Monoidal using (Bifunctorial)
   import Container.Combinator.Compose.Properties as CompProp
 

@@ -28,6 +28,7 @@ private
 module ◇-util where
   open import Relation.Binary.PropositionalEquality as ≡
     using (_≡_)
+  import Data.Product.Properties as ProdProp
   -- proof utility
   module _ {C : Container c c'} where
     open Container C renaming (Shape to S; Position to P)
@@ -44,6 +45,24 @@ module ◇-util where
       → mk◇ {P = Q} {cx = cx} (p₁ , q₁) ≡ mk◇ (p₂ , q₂)
     ◇-dcong Q eq-p eq-q =
       ≡.dcong₂ (λ r₁ r₂ → mk◇ (r₁ , r₂)) eq-p eq-q
+    
+    ◇-split-≡ : ∀ {x ℓ} {X : Set x} {Q : X → Set ℓ} {cx : ⟦ C ⟧ X}
+      → {pq₁@(mk◇ (p₁ , q₁)) pq₂@(mk◇ (p₂ , q₂)) : ◇ C Q cx}
+      → pq₁ ≡ pq₂
+      → Prod.Σ (p₁ ≡ p₂) (λ eqP → ≡.subst (Q F.∘ proj₂ cx) eqP q₁ ≡ q₂)
+    ◇-split-≡ eq = ProdProp.Σ-≡,≡←≡ (≡.cong ◇.proof eq)
+
+    ◇-injectiveˡ : ∀ {x ℓ} {X : Set x} {Q : X → Set ℓ} {cx : ⟦ C ⟧ X}
+      → {pq₁@(mk◇ (p₁ , q₁)) pq₂@(mk◇ (p₂ , q₂)) : ◇ C Q cx}
+      → pq₁ ≡ pq₂ → p₁ ≡ p₂
+    ◇-injectiveˡ eq = proj₁ (◇-split-≡ eq)
+    
+    ◇-injectiveʳ : ∀ {x ℓ} {X : Set x} {Q : X → Set ℓ} {cx : ⟦ C ⟧ X}
+      → {pq₁@(mk◇ (p₁ , q₁)) pq₂@(mk◇ (p₂ , q₂)) : ◇ C Q cx}
+      → (eq : pq₁ ≡ pq₂)
+        (let eq₁ = ◇-injectiveˡ eq)
+      → ≡.subst (Q F.∘ proj₂ cx) eq₁ q₁ ≡ q₂
+    ◇-injectiveʳ eq = proj₂ (◇-split-≡ eq)
     
     curry◇ : ∀ {x} {X : Set x} {cx : ⟦ C ⟧ X} {ℓ} {Q : X → Set ℓ} {y} {Y : Set y}
       → (◇ C Q cx → Y)
