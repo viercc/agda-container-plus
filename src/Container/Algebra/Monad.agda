@@ -74,20 +74,123 @@ module _ {s p} {C D : Container s p}
 
   open _⇔_ iso
   open IsEquivalence {{...}}
-
+  
   transferRawMonad : RawMonad C → RawMonad D
   transferRawMonad rawC = record {
       unit = to ∘ RawMonad.unit rawC;
       join = to ∘ RawMonad.join rawC ∘ map₁ from ∘ map₂ from
     }
   
-  -- TODO: transferIsMonad
-  -- This is currently impossible and its root cause is
-  -- S in (S ▷ P) being Set rather than Setoid.
-  -- 
-  -- transferIsMonad : {rawC : RawMonad C} (lawC : IsMonad C rawC)
-  --   → IsMonad D (transferRawMonad rawC)
-  -- transferIsMonad {rawC} lawC = _
+  open import Container.Lax
+  open import Container.Combinator.Compose.Lax
+
+  WellDefinedJoin : {C : Container s p} (rawC : RawMonad C)
+    → Set (s ⊔ p)
+  WellDefinedJoin {C = C} rawC = WellDefined (laxComp C C) (strict C) (RawMonad.join rawC)
+
+  open import Container.Combinator.Monoidal using (Bifunctorial)
+  import Container.Combinator.Compose.Properties as CompProp
+
+  transferWell : {rawC : RawMonad C}
+    → WellDefinedJoin rawC
+    → WellDefinedJoin (transferRawMonad rawC)
+  transferWell {rawC} join-well =
+    ∘-well (strictWellDefined (strict D) to)
+      (∘-well join-well
+        (∘-well (map₁-well from C) (map₂-well D from)))
+
+  transferIsMonad : {rawC : RawMonad C} (lawC : IsMonad C rawC)
+    → (join-well : WellDefinedJoin rawC)
+    → IsMonad D (transferRawMonad rawC)
+  transferIsMonad {rawC} lawC join-well = record {
+      left-unit = left-unit;
+      right-unit = right-unit;
+      assoc = assoc
+    }
+    where
+      open RawMonad rawC
+        renaming (unit to unitC; join to joinC)
+      module LC = IsMonad lawC
+      rawD : RawMonad D
+      rawD = transferRawMonad rawC
+      open RawMonad rawD
+        renaming (unit to unitD; join to joinD)
+      
+      join-map₁-cong : ∀
+        {e e'} {E : Container e e'} {ff gg : E ⇒ C}
+        → ff ≈ gg
+        → joinC ∘ map₁ ff ≈ joinC ∘ map₁ gg
+      join-map₁-cong eq = unLax≈ (∘-cong₂-lax join-well (map₁-cong eq C))
+      
+      join-map₂-cong : ∀
+        {e e'} {E : Container e e'} {ff gg : E ⇒ C}
+        → ff ≈ gg
+        → joinC ∘ map₂ ff ≈ joinC ∘ map₂ gg
+      join-map₂-cong eq = unLax≈ (∘-cong₂-lax join-well (map₂-cong C eq))
+
+      left-unit : joinD ∘ map₁ unitD ∘ ununitLeft ≈ id D
+      left-unit =
+        begin
+          joinD ∘ map₁ unitD ∘ ununitLeft
+        ≈⟨ refl ⟩
+          (to ∘ joinC ∘ map₁ from ∘ map₂ from) ∘ map₁ (to ∘ unitC) ∘ ununitLeft
+        ≈⟨ refl ⟩
+          to ∘ joinC ∘ map₁ (from ∘ to ∘ unitC) ∘ ununitLeft ∘ from
+        ≈⟨ ∘-cong₂ to (∘-cong₁ (join-map₁-cong (∘-cong₁ from-to unitC)) (ununitLeft ∘ from)) ⟩
+          to ∘ joinC ∘ map₁ unitC ∘ ununitLeft ∘ from
+        ≈⟨ ∘-cong₂ to (∘-cong₁ LC.left-unit from) ⟩
+          to ∘ from
+        ≈⟨ to-from ⟩
+          id D
+        ∎
+        where
+          open Reasoning ≈-setoid
+      
+      right-unit : joinD ∘ map₂ unitD ∘ ununitRight ≈ id D
+      right-unit = 
+        begin
+          joinD ∘ map₂ unitD ∘ ununitRight
+        ≈⟨ refl ⟩
+          (to ∘ joinC ∘ map₁ from ∘ map₂ from) ∘ map₂ (to ∘ unitC) ∘ ununitRight
+        ≈⟨ refl ⟩
+          to ∘ joinC ∘ map₂ (from ∘ to ∘ unitC) ∘ ununitRight ∘ from
+        ≈⟨ ∘-cong₂ to (∘-cong₁ (join-map₂-cong (∘-cong₁ from-to unitC)) (ununitRight ∘ from)) ⟩
+          to ∘ joinC ∘ map₂ unitC ∘ ununitRight ∘ from
+        ≈⟨ ∘-cong₂ to (∘-cong₁ LC.right-unit from) ⟩
+          to ∘ from
+        ≈⟨ to-from ⟩
+          id D
+        ∎
+        where
+          open Reasoning ≈-setoid
+      
+      assoc : joinD ∘ map₁ joinD ≈ joinD ∘ map₂ joinD ∘ assocʳ
+      assoc = 
+        begin
+          joinD ∘ map₁ joinD
+        ≈⟨ refl ⟩
+          (to ∘ joinC ∘ map₁ from ∘ map₂ from) ∘ map₁ (to ∘ joinC ∘ map₁ from ∘ map₂ from)
+        ≈⟨ refl ⟩
+          to ∘ joinC ∘ map₁ (from ∘ to ∘ joinC) ∘ map₂ from ∘ map₁ (map₁ from ∘ map₂ from)
+        ≈⟨ ∘-cong₂ to (
+              ∘-cong₁
+                (join-map₁-cong (∘-cong₁ from-to joinC))
+                (map₂ from ∘ map₁ (map₁ from ∘ map₂ from))) ⟩
+          to ∘ joinC ∘ map₁ joinC ∘ map₂ from ∘ map₁ (map₁ from ∘ map₂ from)
+        ≈⟨ ∘-cong₂ to (∘-cong₁ LC.assoc (map₂ from ∘ map₁ (map₁ from ∘ map₂ from))) ⟩
+          to ∘ joinC ∘ map₂ joinC ∘ assocʳ ∘ map₂ from ∘ map₁ (map₁ from ∘ map₂ from)
+        ≈⟨ ∘-cong₂ to (
+              ∘-cong₁
+                (join-map₂-cong (∘-cong₁ from-to joinC))
+                (assocʳ ∘ map₂ from ∘ map₁ (map₁ from ∘ map₂ from))) ⟨
+          to ∘ joinC ∘ map₂ (from ∘ to ∘ joinC) ∘ assocʳ ∘ map₂ from ∘ map₁ (map₁ from ∘ map₂ from)
+        ≈⟨ refl ⟩
+          (to ∘ joinC ∘ map₁ from ∘ map₂ from) ∘ map₂ (to ∘ joinC ∘ map₁ from ∘ map₂ from) ∘ assocʳ
+        ≈⟨ refl ⟩
+          joinD ∘ map₂ joinD ∘ assocʳ
+        ∎
+        where
+          open Reasoning ≈-setoid
 
 -- Monad implies TensorMonoid
 

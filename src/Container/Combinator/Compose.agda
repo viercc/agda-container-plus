@@ -32,6 +32,11 @@ module ◇-util where
   module _ {C : Container c c'} where
     open Container C renaming (Shape to S; Position to P)
     
+    ◇-dinat : ∀ {x y ℓ} {X : Set x} {Y : Set y} (Q : Y → Set ℓ) {cx : ⟦ C ⟧ X}
+      (f : X → Y)
+      → ◇ C Q (map⟦⟧ f cx) → ◇ C (Q F.∘ f) cx
+    ◇-dinat _ _ (mk◇ pq) = mk◇ pq
+    
     ◇-dcong : ∀ {x ℓ} {X : Set x} (Q : X → Set ℓ) {cx : ⟦ C ⟧ X}
       → {p₁ p₂ : P (proj₁ cx)} (eq-p : p₁ ≡ p₂)
       → {q₁ : Q (proj₂ cx p₁)} {q₂ : Q (proj₂ cx p₂)}

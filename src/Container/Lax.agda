@@ -288,20 +288,19 @@ unLax≈ (mkLax≈ eqS eqP) = mk≈ eqS eqP
 -- Morphism composition ∘ is congruent w.r.t. Lax equivalence
 module _
   {c c' d d' e e' : Level}
-  {C* : LaxContainer c c'} {D* : LaxContainer d d'} {E* : LaxContainer e e'}
+  {C : Container c c'} {D* : LaxContainer d d'} {E* : LaxContainer e e'}
   where
 
   private
-    module LC = LaxContainer C*
     module LD = LaxContainer D*
     module LE = LaxContainer E*
   
-  open LC using () renaming (_∼_ to _∼₁_; S to C₀)
+  open Container C using () renaming (Shape to C₀)
   open LE using () renaming (_∼_ to _∼₃_; P to E₁)
 
   ∘-cong₁-lax :
     {ff₁ ff₂ : ⌊ D* ⌋ ⇒ ⌊ E* ⌋} (_ : Lax≈ E* ff₁ ff₂)
-    (gg : ⌊ C* ⌋ ⇒ ⌊ D* ⌋)
+    (gg : C ⇒ ⌊ D* ⌋)
     → Lax≈ E* (ff₁ ∘ gg) (ff₂ ∘ gg)
   ∘-cong₁-lax
     (mkLax≈ eqS eqP) (g ▷ g#)
@@ -311,7 +310,7 @@ module _
   -- WellDefined
   ∘-cong₂-lax :
     {ff : ⌊ D* ⌋ ⇒ ⌊ E* ⌋} (_ : WellDefined D* E* ff)
-    {gg₁ gg₂ : ⌊ C* ⌋ ⇒ ⌊ D* ⌋} (_ : Lax≈ D* gg₁ gg₂)
+    {gg₁ gg₂ : C ⇒ ⌊ D* ⌋} (_ : Lax≈ D* gg₁ gg₂)
     → Lax≈ E* (ff ∘ gg₁) (ff ∘ gg₂)
   ∘-cong₂-lax
     {ff = f ▷ f#} well-ff
