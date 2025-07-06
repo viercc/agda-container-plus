@@ -43,8 +43,7 @@ module ◇-util where
       → {q₁ : Q (proj₂ cx p₁)} {q₂ : Q (proj₂ cx p₂)}
       → (eq-q : ≡.subst (λ p → Q (proj₂ cx p)) eq-p q₁ ≡ q₂)
       → mk◇ {P = Q} {cx = cx} (p₁ , q₁) ≡ mk◇ (p₂ , q₂)
-    ◇-dcong Q eq-p eq-q =
-      ≡.dcong₂ (λ r₁ r₂ → mk◇ (r₁ , r₂)) eq-p eq-q
+    ◇-dcong Q eq-p eq-q = ≡.dcong₂ (λ p q → mk◇ (p , q)) eq-p eq-q
     
     ◇-split-≡ : ∀ {x ℓ} {X : Set x} {Q : X → Set ℓ} {cx : ⟦ C ⟧ X}
       → {pq₁@(mk◇ (p₁ , q₁)) pq₂@(mk◇ (p₂ , q₂)) : ◇ C Q cx}
@@ -63,6 +62,12 @@ module ◇-util where
         (let eq₁ = ◇-injectiveˡ eq)
       → ≡.subst (Q F.∘ proj₂ cx) eq₁ q₁ ≡ q₂
     ◇-injectiveʳ eq = proj₂ (◇-split-≡ eq)
+
+    ◇-dcong-split : ∀ {x ℓ} {X : Set x} (Q : X → Set ℓ) {cx : ⟦ C ⟧ X}
+      → {pq₁ pq₂ : ◇ C Q cx}
+      → (eq : pq₁ ≡ pq₂)
+      → ◇-dcong Q (◇-injectiveˡ eq) (◇-injectiveʳ eq) ≡ eq
+    ◇-dcong-split _ ≡.refl = ≡.refl
     
     curry◇ : ∀ {x} {X : Set x} {cx : ⟦ C ⟧ X} {ℓ} {Q : X → Set ℓ} {y} {Y : Set y}
       → (◇ C Q cx → Y)
@@ -72,7 +77,7 @@ module ◇-util where
     uncurry◇ : ∀ {x} {X : Set x} {s : S} {v : P s → X} {ℓ} {Q : X → Set ℓ} {y} {Y : Set y}
       → ((p : P s) → Q (v p) → Y)
       → (◇ C Q (s , v) → Y)
-    uncurry◇ w (mk◇ (p , q)) = w p q
+    uncurry◇ w = Prod.uncurry w F.∘ ◇.proof
   
   module _ {C : Container c c'} {D : Container d d'} where
     ◇-assocˡ : ∀ {x ℓ} {X : Set x} {Q : X → Set ℓ}

@@ -8,6 +8,7 @@ import Function as F
 open F using (_∘′_)
 import Data.Product as Prod
 open Prod using (proj₁; proj₂; _,_)
+import Data.Product.Properties as ProdProp
 open import Data.Unit.Polymorphic.Base using (⊤; tt)
 
 open import Relation.Binary.PropositionalEquality as ≡
@@ -26,6 +27,7 @@ open import Container.Combinator.Compose as Compose using (Id; Comp)
 
 import Container.Algebra.Monad as MM
 import Container.Lax as Lax
+import Container.Combinator.Compose.Lax as LaxComp
 
 private
   variable
@@ -54,11 +56,39 @@ record RawMonad (C : Container s p) : Set (s ⊔ p) where
   mm : ⟦ C ⟧ S → S
   mm (s , v) = s • v
 
-cong-apply : ∀ {a b c} {A : Set a} {B : Set b} {C : Set c}
-  → (f : A → C) (g : B → C) {h : A → B} → (f ≗ g ∘′ h)
-  → {x : A} {y : B} → (h x ≡ y)
-  → f x ≡ g y
-cong-apply f g f≗gh {x = x} hx≡y = ≡.trans (f≗gh x) (≡.cong g hx≡y)
+private
+  cong-apply : ∀ {a b c} {A : Set a} {B : Set b} {C : Set c}
+    → (f : A → C) (g : B → C) {h : A → B} → (f ≗ g ∘′ h)
+    → {x : A} {y : B} → (h x ≡ y)
+    → f x ≡ g y
+  cong-apply f g f≗gh {x = x} hx≡y = ≡.trans (f≗gh x) (≡.cong g hx≡y)
+
+  dsubst₂-∘₂ : ∀ {a b c ℓ}
+    {A : Set a} {B : A → Set b} {C : Set c} (P : C → Set ℓ)
+    {f : (x : A) → (y : B x) → C}
+    {x x' y y'} (eq₁ : x ≡ x') (eq₂ : ≡.subst B eq₁ y ≡ y')
+    {p : P (f x y)}
+     → ≡.dsubst₂ (P F.∘₂ f) eq₁ eq₂ p ≡ ≡.subst P (≡.dcong₂ f eq₁ eq₂) p
+  dsubst₂-∘₂ _ ≡.refl ≡.refl = ≡.refl
+  
+  dsubst₂-uncurry : ∀ {a b ℓ}
+    {A : Set a} {B : A → Set b}
+    → (P : (x : A) → (y : B x) → Set ℓ)
+    → {x x' : A} (eq₁ : x ≡ x')
+    → {y : B x} {y' : B x'} (eq₂ : ≡.subst B eq₁ y ≡ y')
+    → (let eq = ProdProp.Σ-≡,≡→≡ (eq₁ , eq₂))
+    → {p : P x y}
+    → ≡.dsubst₂ P eq₁ eq₂ p ≡ ≡.subst (Prod.uncurry P) eq p
+  dsubst₂-uncurry _ ≡.refl ≡.refl = ≡.refl
+
+  dcong₂-uncurry : ∀ {a b ℓ}
+    {A : Set a} {B : A → Set b} {C : Set ℓ}
+    → (f : (x : A) → (y : B x) → C)
+    → {x x' : A} (eq₁ : x ≡ x')
+    → {y : B x} {y' : B x'} (eq₂ : ≡.subst B eq₁ y ≡ y')
+    → (let eq = ProdProp.Σ-≡,≡→≡ (eq₁ , eq₂))
+    → ≡.dcong₂ f eq₁ eq₂ ≡ ≡.cong (Prod.uncurry f) eq
+  dcong₂-uncurry _ ≡.refl ≡.refl = ≡.refl
 
 module EqualityDefinition (C : Container s p) where
   open import Relation.Binary using (Rel; IsEquivalence)
@@ -248,6 +278,7 @@ module _ {C : Container s p} where
       open RawMonad (unpack raw)
       open MM.IsMonad isMonad
       open Lax.WellDefined join-well
+      module LCC = Lax.LaxContainer (LaxComp.laxComp C C)
 
       •-cong : ∀ {cx cy : ⟦ C ⟧ S}
         → Eq cx cy → mm cx ≡ mm cy
@@ -264,42 +295,110 @@ module _ {C : Container s p} where
         → ≡.subst P (cong-apply (proj₂ cx) (proj₂ cy) (positionEq eq) (↖-cong eq p)) (↗ p)
             ≡
           ↗ (≡.subst P (•-cong eq) p)
-      ↗-cong eq p = ◇-injectiveʳ (position-cong (fromEq eq))
+      ↗-cong {cx} {cy} eq p = begin
+          ≡.subst P (cong-apply (proj₂ cx) (proj₂ cy) (positionEq eq) (↖-cong eq p)) (↗ p)
+        ≡⟨⟩
+          ≡.subst P (≡.trans (positionEq eq (↖ p)) (≡.cong (proj₂ cy) (↖-cong eq p)))
+            (↗ p)
+        ≡⟨ ≡.subst-subst (positionEq eq (↖ p)) ⟨
+          ≡.subst P (≡.cong (proj₂ cy) (↖-cong eq p))
+            (≡.subst P (positionEq eq (↖ p)) (↗ p))
+        ≡⟨ ≡.subst-∘ (↖-cong eq p) ⟨
+          ≡.subst (P F.∘ proj₂ cy) (↖-cong eq p)
+            (≡.subst P (positionEq eq (↖ p)) (↗ p))
+        ≡⟨ ◇-injectiveʳ (position-cong (fromEq eq)) ⟩
+          ↗ (≡.subst P (•-cong eq) p)
+        ∎
+        where
+          open ≡.≡-Reasoning
 
       •-ε : ∀ (s : S) → s • F.const ε ≡ s
-      •-ε = _
+      •-ε s = right-unit ._≈_.shape s
 
       ε-• : ∀ (s : S) → ε • F.const s ≡ s
-      ε-• = _
+      ε-• s = left-unit ._≈_.shape s
       
       •-• : ∀ (s : S) (v : P s → S) (w : (p : P s) → P (v p) → S)
         → (s • v) • diag w ≡ s • zip v w
-      •-• = _
+      •-• s v w = assoc ._≈_.shape ((s , v) , uncurry◇ w)
       
       ↖-inner-ε : ∀ {s : S} (p : P (s • F.const ε))
         → ↖ p ≡ ≡.subst P (•-ε s) p
-      ↖-inner-ε = _
+      ↖-inner-ε {s = s} p = right-unit ._≈_.position s p
+
       ↗-outer-ε : ∀ {s : S} (p : P (ε • F.const s))
         → ↗ p ≡ ≡.subst P (ε-• s) p
-      ↗-outer-ε = _
-      
-      ↖-↖ : ∀ {s : S} {v : P s → S} {w : (p : P s) → P (v p) → S}
-        → {p : P ((s • v) • diag w)} {q : P (s • zip v w)}
-        → (p≡q : ≡.subst P (•-• s v w) p ≡ q)
-        → ↖ (↖ p) ≡ ↖ q
-      ↖-↖ = _
+      ↗-outer-ε {s = s} p = left-unit ._≈_.position s p
 
-      ↗-↖ : ∀ {s : S} {v : P s → S} {w : (p : P s) → P (v p) → S}
-        → {p : P ((s • v) • diag w)} {q : P (s • zip v w)}
-        → (p≡q : ≡.subst P (•-• s v w) p ≡ q)
-        → (let p₁₁≡q₁ = ↖-↖ p≡q)
-        → ≡.subst (λ r → P (v r)) p₁₁≡q₁ (↗ (↖ p)) ≡ ↖ (↗ q)
-      ↗-↖ = _
-      
-      ↗-↗ : ∀ {s : S} {v : P s → S} {w : (p : P s) → P (v p) → S}
-        → {p : P ((s • v) • diag w)} {q : P (s • zip v w)}
-        → (p≡q : ≡.subst P (•-• s v w) p ≡ q)
-        → (let p₁₁≡q₁ = ↖-↖ p≡q)
-            (let p₁₂≡q₂₁ = ↗-↖ p≡q)
-        → ≡.dsubst₂ (λ r₁ r₂ → P (w r₁ r₂)) p₁₁≡q₁ p₁₂≡q₂₁ (↗ p) ≡ ↗ (↗ q)
-      ↗-↗ = _
+      module _
+          {s : S} {v : P s → S} {w : (p : P s) → P (v p) → S}
+           where
+        svw : ⟦ Comp C C ⟧ S
+        svw = (s , v) , uncurry◇ w
+        
+        svw' : ⟦ C ⟧ (⟦ C ⟧ S)
+        svw' = s , λ p → (v p , w p)
+
+        ppp : P ((s • v) • diag w) → ◇ (Comp C C) P svw
+        ppp p = mk◇ (mk◇ (↖ (↖ p) , ↗ (↖ p)) , ↗ p)
+        
+        qqq : P (s • zip v w) → ◇ C (◇ C P) svw'
+        qqq q = mk◇ (↖ q , mk◇ (↖ (↗ q) , ↗ (↗ q)))
+
+        assoc-pos : (p : P ((s • v) • diag w)) → ppp p ≡ ◇-assocˡ (qqq (≡.subst P (•-• s v w) p))
+        assoc-pos p = assoc ._≈_.position svw p
+
+        ↖-↖ : ∀ {p : P ((s • v) • diag w)} {q : P (s • zip v w)}
+          → (p≡q : ≡.subst P (•-• s v w) p ≡ q)
+          → ↖ (↖ p) ≡ ↖ q
+        ↖-↖ {p = p} ≡.refl = ◇-injectiveˡ (◇-injectiveˡ (assoc-pos p))
+
+        ↗-↖ : ∀ {p : P ((s • v) • diag w)} {q : P (s • zip v w)}
+          → (p≡q : ≡.subst P (•-• s v w) p ≡ q)
+          → (let p₁₁≡q₁ = ↖-↖ p≡q)
+          → ≡.subst (λ r → P (v r)) p₁₁≡q₁ (↗ (↖ p)) ≡ ↖ (↗ q)
+        ↗-↖ {p = p} ≡.refl = ◇-injectiveʳ (◇-injectiveˡ (assoc-pos p))
+        
+        w◇ : ◇ C P (s , v) → S
+        w◇ = uncurry◇ w
+
+        dcong₂-uncurry◇ : ∀ {p₁ q₁ : P s}
+          → (eq₁ : p₁ ≡ q₁)
+          → {p₂ : P (v p₁)} {q₂ : P (v q₁)}
+          → (eq₂ : ≡.subst (P F.∘ v) eq₁ p₂ ≡ q₂)
+          → ≡.dcong₂ w eq₁ eq₂ ≡ ≡.cong w◇ (◇-dcong P {cx = s , v} eq₁ eq₂)
+        dcong₂-uncurry◇ ≡.refl ≡.refl = ≡.refl
+
+        ↗-↗ : ∀ {p : P ((s • v) • diag w)} {q : P (s • zip v w)}
+          → (p≡q : ≡.subst P (•-• s v w) p ≡ q)
+          → (let p₁₁≡q₁ = ↖-↖ p≡q) (let p₁₂≡q₂₁ = ↗-↖ p≡q)
+          → ≡.dsubst₂ (P F.∘₂ w) p₁₁≡q₁ p₁₂≡q₂₁ (↗ p) ≡ ↗ (↗ q)
+        ↗-↗ {p = p} {q = q} ≡.refl =
+          begin
+            ≡.dsubst₂ (P F.∘₂ w) eq₁ eq₂ (↗ p)
+          ≡⟨ dsubst₂-∘₂ P eq₁ eq₂ ⟩
+            ≡.subst P (≡.dcong₂ w eq₁ eq₂) (↗ p)
+          ≡⟨ ≡.cong (λ e → ≡.subst P e (↗ p)) (dcong₂-uncurry◇ eq₁ eq₂) ⟩
+            ≡.subst P (≡.cong w◇ eq◇) (↗ p)
+          ≡⟨ ≡.subst-∘ eq◇ ⟨
+            ≡.subst (P F.∘ w◇) eq◇ (↗ p)
+          ≡⟨ ≡.cong (λ e → ≡.subst (P F.∘ w◇) e (↗ p)) eq◇≡assoc-posˡ ⟩
+            ≡.subst (P F.∘ w◇) (◇-injectiveˡ (assoc-pos p))
+              (↗ p)
+          ≡⟨ ◇-injectiveʳ (assoc-pos p) ⟩
+            ↗ (↗ q)
+          ∎
+          where
+            eq₁ : ↖ (↖ p) ≡ ↖ q
+            eq₁ = ↖-↖ ≡.refl
+            
+            eq₂ : ≡.subst (P F.∘ v) eq₁ (↗ (↖ p)) ≡ ↖ (↗ q)
+            eq₂ = ↗-↖ ≡.refl
+
+            eq◇ : mk◇ (↖ (↖ p) , ↗ (↖ p)) ≡ mk◇ (↖ q , ↖ (↗ q))
+            eq◇ = ◇-dcong P eq₁ eq₂
+
+            eq◇≡assoc-posˡ : eq◇ ≡ ◇-injectiveˡ (assoc-pos p)
+            eq◇≡assoc-posˡ = ◇-dcong-split P (◇-injectiveˡ (assoc-pos p))
+
+            open ≡.≡-Reasoning
