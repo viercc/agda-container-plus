@@ -201,9 +201,9 @@ module _ {C : Container s p} where
       open IsMonad isMonad'
       open Compose.◇-util using (◇-dcong)
 
-  packLaws : (raw' : RawMonad C)
+  packLaw : (raw' : RawMonad C)
     → IsMonad C raw' → MM.IsMonad C (pack raw')
-  packLaws raw' isMonad' = record{ impl }
+  packLaw raw' isMonad' = record{ impl }
     where
       module impl where
         open Compose.◇-util using (curry◇; ◇-dcong; ◇-assocˡ)
@@ -402,3 +402,21 @@ module _ {C : Container s p} where
             eq◇≡assoc-posˡ = ◇-dcong-split P (◇-injectiveˡ (assoc-pos p))
 
             open ≡.≡-Reasoning
+
+module _ {c c'} {C₁ C₂ : Container c c'}
+  (iso : C₁ ⇔ C₂) where
+  open _⇔_ iso
+
+  transferRawMonad : RawMonad C₁ → RawMonad C₂
+  transferRawMonad raw = unpack (MM.transferRawMonad iso (pack raw))
+  
+  transferIsMonad : ∀ {raw : RawMonad C₁}
+    → IsMonad C₁ raw → IsMonad C₂ (transferRawMonad raw)
+  transferIsMonad {raw = raw} law₁ = unpackLaw _ isMonad₂ well₂
+    where
+      rawMonad₁ = pack raw
+      rawMonad₂ = MM.transferRawMonad iso rawMonad₁
+      well₁ = packWellDefined raw law₁
+      well₂ = MM.transferWell iso {rawC = rawMonad₁} well₁
+      isMonad₁ = packLaw raw law₁
+      isMonad₂ = MM.transferIsMonad iso isMonad₁ well₁

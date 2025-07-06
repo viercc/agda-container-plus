@@ -24,6 +24,13 @@ private
   variable
     s p : Level
 
+private
+  cong-apply : ∀ {a b c} {A : Set a} {B : Set b} {C : Set c}
+    → (f : A → C) (g : B → C) {h : A → B} → (f ≗ g ∘′ h)
+    → {x : A} {y : B} → (h x ≡ y)
+    → f x ≡ g y
+  cong-apply f g f≗gh {x = x} hx≡y = ≡.trans (f≗gh x) (≡.cong g hx≡y)
+
 record RawMonad' (S : Set s) (I : Set p) : Set (s ⊔ p) where
   infixr 7 _•_
   
@@ -113,62 +120,6 @@ record IsMonadMorphism' {S T : Set s} {I J : Set p}
         (let Dqr = D.qr (τ₀ s) (τ₀ ∘′ v ∘′ τ₁ s))
       → (j : J)
       → Cqr (τ₁ (s C.• v) j) ≡ τ₁ (v (τ₁ s (Dql j))) (Dqr j)
-
-module _ {S T : Set s} {I J : Set p}
-  (iso : (S ▷′ I) ⇔ (T ▷′ J)) where
-  open _⇔_ iso
-  open _⇒_ to renaming (shape to f; position to f#)
-  open _⇒_ from renaming (shape to g; position to g#)
-
-  transferRawMonad' : RawMonad' S I → RawMonad' T J
-  transferRawMonad' raw = record {
-      ε = f ε;
-      _•_ = λ t v → f (g t • g ∘′ v ∘′ g# {t});
-      ql = λ t v →
-        let s = g t
-            u = v ∘′ g# {t}
-        in g# {t} ∘′ ql s (g ∘′ u) ∘′ f# {s};
-      qr = λ t v j →
-        let s = g t
-            u = v ∘′ g# {t}
-            i = f# {s} j
-            i₁ = ql s (g ∘′ u) i
-            i₂ = qr s (g ∘′ u) i
-        in g# {u i₁} i₂
-    }
-    where
-      open RawMonad' raw
-
-  transferIsMonad' : { raw : RawMonad' S I } (law : IsMonad' S I raw)
-    → IsMonad' T J (transferRawMonad' raw)
-  transferIsMonad' raw = record {
-
-    }
-
-module IsMonad'-consequences
-  {S : Set s} {I : Set p} {raw' : RawMonad' S I}
-  (isMonad' : IsMonad' S I raw') where
-  open RawMonad' raw'
-  open IsMonad' isMonad'
-  
-  ε-ε : ε • F.const ε ≡ ε
-  ε-ε = •-ε ε
-
-  ε•-ε• : ∀ (w : I → I → S)
-    → (ε • λ i → ε • w i) ≡ ε • λ i → w i i
-  ε•-ε• w =
-    begin
-      (ε • λ i → ε • w i)
-    ≡⟨ •-• ε (F.const ε) w ⟨
-      (ε • F.const ε) • diag ε (F.const ε) w
-    ≡⟨ ≡.cong (_• diag ε (F.const ε) w) ε-ε ⟩
-      ε • diag ε (F.const ε) w
-    ≡⟨⟩
-      (ε • λ i → w (ql ε (F.const ε) i) (qr ε (F.const ε) i))
-    ≡⟨ •-cong₂ (λ i → ≡.cong₂ w (ql-inner-ε ε i) (qr-outer-ε ε i)) ⟩
-      (ε • λ i → w i i)
-    ∎
-    where open ≡.≡-Reasoning
 
 -- Utilities
 
@@ -324,3 +275,44 @@ module _ {S : Set s} {I : Set p} where
           dsubst₂-const I _ _ (↗ p) ⨾
           law'.qr-qr s v w p ⨾
           ≡.cong (λ r → ↗ {v (↖ r)} {w (↖ r)} (↗ r)) (≡.sym (subst-const I _ p))
+
+-- Transferring monomial monad via isomorphisms
+module _ {S T : Set s} {I J : Set p}
+  (iso : (S ▷′ I) ⇔ (T ▷′ J)) where
+
+  transferRawMonad' : RawMonad' S I → RawMonad' T J
+  transferRawMonad' raw' = fromRawMonad (transferRawMonad iso (toRawMonad raw'))
+
+  transferIsMonad' : { raw' : RawMonad' S I } (law : IsMonad' S I raw')
+    → IsMonad' T J (transferRawMonad' raw')
+  transferIsMonad' { raw' = raw' } law' = fromIsMonad raw₂ law₂
+    where
+      raw₁ = toRawMonad raw'
+      raw₂ = transferRawMonad iso raw₁
+      law₁ = toIsMonad raw' law'
+      law₂ = transferIsMonad iso law₁
+
+module IsMonad'-consequences
+  {S : Set s} {I : Set p} {raw' : RawMonad' S I}
+  (isMonad' : IsMonad' S I raw') where
+  open RawMonad' raw'
+  open IsMonad' isMonad'
+  
+  ε-ε : ε • F.const ε ≡ ε
+  ε-ε = •-ε ε
+
+  ε•-ε• : ∀ (w : I → I → S)
+    → (ε • λ i → ε • w i) ≡ ε • λ i → w i i
+  ε•-ε• w =
+    begin
+      (ε • λ i → ε • w i)
+    ≡⟨ •-• ε (F.const ε) w ⟨
+      (ε • F.const ε) • diag ε (F.const ε) w
+    ≡⟨ ≡.cong (_• diag ε (F.const ε) w) ε-ε ⟩
+      ε • diag ε (F.const ε) w
+    ≡⟨⟩
+      (ε • λ i → w (ql ε (F.const ε) i) (qr ε (F.const ε) i))
+    ≡⟨ •-cong₂ (λ i → ≡.cong₂ w (ql-inner-ε ε i) (qr-outer-ε ε i)) ⟩
+      (ε • λ i → w i i)
+    ∎
+    where open ≡.≡-Reasoning
