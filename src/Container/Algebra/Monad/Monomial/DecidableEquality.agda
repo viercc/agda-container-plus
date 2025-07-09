@@ -210,6 +210,50 @@ module preliminary
       m
     ∎
     where open ≡.≡-Reasoning
+  
+  ql-ε-at : ∀ (v : I → M) (i : I) → ql ε ((ε • v) at_) i ≡ ql ε v i
+  ql-ε-at v i =
+    let open ≡.≡-Reasoning in
+    begin
+      ql ε (n at_) i
+    ≡⟨ ≡.cong (λ e → ql e (n at_) i) ε-ε ⟨
+      ql (ε • e₁) (n at_) i
+    ≡⟨ ql-cong₂ diag-w i ⟨
+      ql (ε • e₁) (diag ε e₁ w) i
+    ≡⟨ ql-inner-ε ε _ ⟨
+      ql ε e₁ (ql (ε • e₁) (diag ε e₁ w) i)
+    ≡⟨ ql-ql ε e₁ w i ⟩
+      ql ε (zip e₁ w) i
+    ≡⟨⟩
+      ql ε (λ j → ε • (v j at_)) i
+    ≡⟨ ql-cong₂ (λ j → ε•-at (v j)) i ⟩
+      ql ε v i
+    ∎
+    where
+      e₁ : I → M
+      e₁ = F.const ε
+      
+      n : M
+      n = ε • v
+      
+      w : I → I → M
+      w j k = v j at k
+
+      diag-w : diag ε e₁ w ≗ (n at_)
+      diag-w j =
+        let open ≡.≡-Reasoning in
+        begin
+          diag ε e₁ w j
+        ≡⟨⟩
+          w (ql ε e₁ j) (qr ε e₁ j)
+        ≡⟨ ≡.cong₂ w (ql-inner-ε ε j) (qr-outer-ε ε j) ⟩
+          w j j
+        ≡⟨⟩
+          v j at j
+        ≡⟨ at-ε• v j ⟨
+          n at j
+        ∎
+      
 
 module factorization
   {raw : RawMonad' M I}
@@ -287,7 +331,7 @@ module factorization
 import Container.Algebra.Monad.StateLike as SL
 open SL using (RawStateLike; IsStateLike)
 
-module with-qlIsId
+module _
   {raw : RawMonad' M I}
   (law : IsMonad' M I raw) where
 
@@ -295,53 +339,10 @@ module with-qlIsId
   open IsMonad' law
   open preliminary law
 
-  -- Every monomial monad such that `ql m v` is identity,
-  -- the qlIsId below, is equivalent to StateLike.
-
-  qlIsId : Set (m ⊔ p)
-  qlIsId =
-    ∀ (m : M) (v : I → M) (i : I)
-      → ql m v i ≡ i
-  
-  private
-    t : I → M → I
-    t i m = qr m (F.const ε) i
-
-  qr-v-irrelevant :
-    qlIsId → ∀ m v i → t i m ≡ qr m v i
-  qr-v-irrelevant ql-id m v i =
-    begin
-      t i m
-    ≡⟨⟩
-      qr m ee i
-    ≡⟨ ≡.cong (qr m ee) (ql-id _ _ i) ⟨
-      qr m ee (ql _ _ i)
-    ≡⟨ qr-ql m ee w i ⟩
-      ql _ _ (qr m u i)
-    ≡⟨ ql-id _ _ (qr m u i) ⟩
-      qr m u i
-    ≡⟨ qr-cong₂ u≗v i ⟩
-      qr m v i
-    ∎
-    where
-      ee : I → M
-      ee = F.const ε
-
-      w : I → I → M
-      w j _ = v j
-
-      u : I → M
-      u = zip ee w
-
-      u≗v : (i : I) → u i ≡ v i
-      u≗v i = ε-• (v i)
-      
-      open ≡.≡-Reasoning 
-
-  -- The condition ql-id can be proven with
+  -- The LeftTrivial condition can be proven from
   -- seemingly more restrictive equation
   ql-ε-id→ql-id :
-    (∀ (v : I → M) (i : I) → ql ε v i ≡ i) → qlIsId
+    (∀ (v : I → M) (i : I) → ql ε v i ≡ i) → SL.LeftTrivial raw
   ql-ε-id→ql-id ql-ε-id m v i =
     begin
       ql m v i
@@ -375,55 +376,136 @@ module with-qlIsId
 -- When `ql ε v` is automorphism (bijective endomorphism)
 -- `I → I`, then one can construct
 -- monomial monad isomorphic to the original one
--- and satisfies qlIsId.
+-- which satisfies LeftTrivial.
 
-module with-qlIsIso
+record LeftIso (raw : RawMonad' M I) : Set (m ⊔ p) where
+  open RawMonad' raw using (ε; ql)
+  field
+    ql⁻¹ : (I → M) → I → I
+    ql⁻¹-correct : ∀ (v : I → M) → F.Inverseᵇ _≡_ _≡_ (ql ε v) (ql⁻¹ v)
+
+  ql-ql⁻¹ : ∀ (v : I → M) (i : I) → ql ε v (ql⁻¹ v i) ≡ i
+  ql-ql⁻¹ v i = proj₁ (ql⁻¹-correct v) ≡.refl
+
+  ql⁻¹-ql : ∀ (v : I → M) (i : I) → ql⁻¹ v (ql ε v i) ≡ i
+  ql⁻¹-ql v i = proj₂ (ql⁻¹-correct v) ≡.refl
+
+open import Container.Morphism.Equality
+open import Container.Morphism.Iso
+
+module LeftIso→StateLike
   {raw : RawMonad' M I}
-  (law : IsMonad' M I raw) where
+  (law : IsMonad' M I raw)
+  (leftIso : LeftIso raw) where
 
   open RawMonad' raw
   open IsMonad' law
   open preliminary law
+  open LeftIso leftIso
 
-  module _
-    (ql⁻¹ : (I → M) → I → I)
-    (ql⁻¹-correct : ∀ (v : I → M) → F.Inverseᵇ _≡_ _≡_ (ql ε v) (ql⁻¹ v))
-      where
+  private
+    σ : M → I → I
+    σ m = ql ε (m at_)
+
+    σ⁻¹ : M → I → I
+    σ⁻¹ m = ql⁻¹ (m at_)
+
+    σ-σ⁻¹ : ∀ (m : M) (i : I) → σ m (σ⁻¹ m i) ≡ i
+    σ-σ⁻¹ m = ql-ql⁻¹ (m at_)
     
-    private
-      ql-ql⁻¹ : ∀ (v : I → M) (i : I) → ql ε v (ql⁻¹ v i) ≡ i
-      ql-ql⁻¹ v i = proj₁ (ql⁻¹-correct v) ≡.refl
-
-      ql⁻¹-ql : ∀ (v : I → M) (i : I) → ql⁻¹ v (ql ε v i) ≡ i
-      ql⁻¹-ql v i = proj₂ (ql⁻¹-correct v) ≡.refl
-
-      σ : M → I → I
-      σ m = ql ε (m at_)
-
-      σ⁻¹ : M → I → I
-      σ⁻¹ m = ql⁻¹ (m at_)
-
-      σ-σ⁻¹ : ∀ (m : M) (i : I) → σ m (σ⁻¹ m i) ≡ i
-      σ-σ⁻¹ m = ql-ql⁻¹ (m at_)
-      
-      σ⁻¹-σ : ∀ (m : M) (i : I) → σ⁻¹ m (σ m i) ≡ i
-      σ⁻¹-σ m = ql⁻¹-ql (m at_)
-
-    makeRawStateLike : RawStateLike M I
-    makeRawStateLike = record {
-        ε = ε;
-        _•_ = λ m v → m • (v F.∘′ σ m);
-        t = λ i m → qr m (F.const ε) (σ⁻¹ m i)
-      }
+    σ⁻¹-σ : ∀ (m : M) (i : I) → σ⁻¹ m (σ m i) ≡ i
+    σ⁻¹-σ m = ql⁻¹-ql (m at_)
     
-    shift : ⇒′ M I M I
-    shift = mk⇒′ F.id σ⁻¹
+    -- σ defines automorphism on monomial container (M ▷′ I)
+    shift : (M ▷′ I) ⇒ (M ▷′ I)
+    shift = F.id ▷ λ {m} i → σ⁻¹ m i
 
-    unshift : ⇒′ M I M I
-    unshift = mk⇒′ F.id σ
+    unshift : (M ▷′ I) ⇒ (M ▷′ I)
+    unshift = F.id ▷ λ {m} i → σ m i
     
-    -- Let D be the monomial monad makeRawStateLike describes
-    rawD : RawMonad' M I
-    rawD = SL.toRawMonad' makeRawStateLike
-    module RawD = RawMonad' rawD
+  shift-iso : (M ▷′ I) ⇔ (M ▷′ I)
+  shift-iso = mk⇔ shift unshift
+    (mk≈ (λ _ → ≡.refl) (λ m i → σ-σ⁻¹ m i))
+    (mk≈ (λ _ → ≡.refl) (λ m i → σ⁻¹-σ m i))
+
+  private
+    _•′_ : M → (I → M) → M
+    _•′_ m v = m • (v F.∘′ σ m)
+
+    ql′ : M → (I → M) → I → I
+    ql′ m v i = σ m (ql m (v F.∘′ σ m) (σ⁻¹ (m •′ v) i))
+
+    qr′ : M → (I → M) → I → I
+    qr′ m v i = σ (v (ql′ m v i)) (qr m (v F.∘′ σ m) (σ⁻¹ (m •′ v) i))
+
+  raw-triv : RawMonad' M I
+  raw-triv = record {
+      ε = ε;
+      _•_ = _•′_;
+      ql = ql′;
+      qr = qr′
+    }
+
+  -- raw-triv is (definitionally) raw transferred via shift-iso
+  _ : raw-triv ≡ transferRawMonad' shift-iso raw
+  _ = ≡.refl
+
+  isMonad-triv : IsMonad' M I raw-triv
+  isMonad-triv = transferIsMonad' shift-iso law
+
+  private
+    σ-ε-id : ∀ i → σ ε i ≡ i
+    σ-ε-id i =
+      begin
+        σ ε i
+      ≡⟨⟩ 
+        ql ε (ε at_) i
+      ≡⟨ ql-cong₂ at-ε i ⟩
+        ql ε (F.const ε) i
+      ≡⟨ ql-inner-ε ε i ⟩
+        i
+      ∎ 
+      where open ≡.≡-Reasoning
     
+    ε•′ : ∀ v → ε •′ v ≡ ε • v
+    ε•′ v =
+      begin
+        ε •′ v
+      ≡⟨⟩
+        ε • (v F.∘ σ ε)
+      ≡⟨ •-cong₂ (λ i → ≡.cong v (σ-ε-id i)) ⟩
+        ε • v
+      ∎
+      where open ≡.≡-Reasoning
+
+    ql′-ε-id : ∀ (v : I → M) (i : I) → ql′ ε v i ≡ i
+    ql′-ε-id v i =
+      begin
+        ql′ ε v i
+      ≡⟨⟩
+        σ ε (ql ε (v F.∘′ σ ε) (σ⁻¹ (ε •′ v) i))
+      ≡⟨ σ-ε-id _ ⟩
+        ql ε (v F.∘′ σ ε) (σ⁻¹ (ε •′ v) i)
+      ≡⟨ ql-cong₂ (λ i → ≡.cong v (σ-ε-id i)) _ ⟩
+        ql ε v (σ⁻¹ (ε •′ v) i)
+      ≡⟨ ≡.cong (λ m′ → ql ε v (σ⁻¹ m′ i)) (ε•′ v) ⟩
+        ql ε v (σ⁻¹ (ε • v) i)
+      ≡⟨ ql-ε-at v _ ⟨
+        ql ε ((ε • v) at_) (σ⁻¹ (ε • v) i)
+      ≡⟨⟩
+        σ (ε • v) (σ⁻¹ (ε • v) i)
+      ≡⟨ σ-σ⁻¹ _ _ ⟩
+        i
+      ∎
+      where open ≡.≡-Reasoning
+  
+  -- raw-triv satisfy LeftTrivial
+  ql′-id : SL.LeftTrivial raw-triv
+  ql′-id = ql-ε-id→ql-id isMonad-triv ql′-ε-id
+
+  -- It is already shown that Monomial + LeftTrivial ⇔ StateLike
+  rawSL : SL.RawStateLike M I
+  rawSL = SL.fromMonomial.rawSL raw-triv ql′-id
+
+  isSL : SL.IsStateLike M I rawSL
+  isSL = SL.fromMonomial.fromIsMonad' raw-triv ql′-id isMonad-triv
