@@ -26,7 +26,6 @@ open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality as ≡
   using (_≡_; _≗_)
 
-open import Data.Container.Core
 open import Container.Algebra.Monad.Monomial
 
 -- Any Monomial monad on finite set of positions is isomorphic to
@@ -49,9 +48,6 @@ module defs where
     variable
       X Y : Set
 
-  Surj : (X → Y) → Set
-  Surj f = ∀ y → ∃ λ x → f x ≡ y
-
   Invˡ : (X → Y) → (Y → X) → Set
   Invˡ f g = ∀ x → g (f x) ≡ x
 
@@ -66,9 +62,6 @@ module defs where
   Inv-to-Inverse {_} {_} {f} {g} (f-g , g-f) =
     (λ {x} eq → ≡.cong f eq ⨾ f-g x) ,
     (λ {x} eq → ≡.cong g eq ⨾ g-f x )
-
-  Surj→Invʳ : {f : X → Y} → Surj f → ∃ (Invʳ f)
-  Surj→Invʳ surj = (λ y → proj₁ (surj y)) , (λ y → proj₂ (surj y))
 
   Invʳ→Injective : (f : X → Y) (g : Y → X) → Invʳ f g → F.Injective _≡_ _≡_ g
   Invʳ→Injective f g fg-id {x₁} {x₂} gx₁≡gx₂ =
@@ -86,10 +79,6 @@ module defs where
 open defs
 
 module Fin-lemmata where
-  image? : ∀ {n : ℕ} (f : Fin n → Fin n) (y : Fin n)
-    → Dec (∃ λ x → f x ≡ y)
-  image? f y = FinProp.any? λ x → f x ≟ y
-
   Invʳ→¬¬Invˡ : ∀ {n : ℕ} (f g : Fin (ℕ.suc n) → Fin (ℕ.suc n))
     → Invʳ f g → ¬ (¬ Invˡ f g)
   Invʳ→¬¬Invˡ {n} f g fg-id ¬gf-id = NatProp.≤⇒≯ bad (NatProp.n<1+n n)
@@ -174,50 +163,6 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
 
   open bool-lemmata
   open DecEq-lemmata
-
-  -- lemma
-  private
-    e₁ : I → M
-    e₁ = F.const ε
-
-    Δ : (I → I → M) → I → M
-    Δ w i = w i i
-
-    d : (I → I → M) → I → M
-    d w i = ε • w i
-
-    diag-ee : ∀ (w : I → I → M) → diag ε e₁ w ≗ Δ w
-    diag-ee w j = ≡.cong₂ w (ql-inner-ε _ _) (qr-outer-ε _ _)
-
-    qr-ql-ee : ∀ (w : I → I → M) (j : I) →
-      ql ε (Δ w) j ≡ ql ε (w (ql ε (d w) j)) (qr ε (d w) j)
-    qr-ql-ee w j =
-      begin
-        ql ε (Δ w) j
-      ≡⟨ ≡.cong (λ e → ql e _ _) ε-ε ⟨
-        ql (ε • e₁) (Δ w) j
-      ≡⟨ ql-cong₂ (diag-ee w) j ⟨
-        ql (ε • e₁) (diag ε e₁ w) j
-      ≡⟨ qr-outer-ε ε _ ⟨
-        qr ε e₁ (ql (ε • e₁) (diag ε e₁ w) j)
-      ≡⟨ qr-ql ε e₁ w j ⟩
-        ql ε (w (ql ε (d w) j)) (qr ε (d w) j)
-      ∎
-      where open ≡.≡-Reasoning
-    
-    qr-qr-ee : ∀ (w : I → I → M) (j : I) →
-      qr ε (Δ w) j ≡ qr ε (w (ql ε (d w) j)) (qr ε (d w) j)
-    qr-qr-ee w j =
-      begin
-        qr ε (Δ w) j
-      ≡⟨ ≡.cong (λ e → qr e _ _) ε-ε ⟨
-        qr (ε • e₁) (Δ w) j
-      ≡⟨ qr-cong₂ (diag-ee w) j ⟨
-        qr (ε • e₁) (diag ε e₁ w) j
-      ≡⟨ qr-qr ε e₁ w j ⟩
-        qr ε (w (ql ε (d w) j)) (qr ε (d w) j)
-      ∎
-      where open ≡.≡-Reasoning
     
   -- single-position case:
   --   `ql ε (α i mᵢ) : I → I`
@@ -227,14 +172,14 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
     mᵢ : M
     mᵢ = m at i
 
-    r s r̂ ŝ : I → I
+    r s r̃ s̃ : I → I
     r = ql ε (α i mᵢ)
     s = qr ε (α i mᵢ)
-    r̂ = ql ε (β i mᵢ)
-    ŝ = qr ε (β i mᵢ)
-
-    r̂≗id : r̂ ≗ F.id
-    r̂≗id j =
+    r̃ = ql ε (β i mᵢ)
+    s̃ = qr ε (β i mᵢ)
+    
+    r̃≗id : r̃ ≗ F.id
+    r̃≗id j =
       begin
         ql ε (β i mᵢ) j
       ≡⟨ ql-ε-at (β i mᵢ) j ⟨
@@ -280,42 +225,20 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
       where open ≡.≡-Reasoning
 
     ql-dw₁≗id : ql ε (d w₁) ≗ F.id
-    ql-dw₁≗id j = ql-cong₂ dw₁≗βmᵢ j ⨾ r̂≗id j
+    ql-dw₁≗id j = ql-cong₂ dw₁≗βmᵢ j ⨾ r̃≗id j
 
-    qr-dw₁≗ŝ : qr ε (d w₁) ≗ ŝ
-    qr-dw₁≗ŝ = qr-cong₂ dw₁≗βmᵢ 
+    qr-dw₁≗s̃ : qr ε (d w₁) ≗ s̃
+    qr-dw₁≗s̃ = qr-cong₂ dw₁≗βmᵢ 
 
-    ŝi≡i : ŝ i ≡ i
-    ŝi≡i = begin
-        ŝ i
-      ≡⟨ ql-inner-ε ε (ŝ i) ⟨
-        ql ε e₁ (ŝ i)
-      ≡⟨ ≡.cong (λ v → ql ε v (ŝ i)) w₁i≡e₁ ⟨
-        ql ε (w₁ i) (ŝ i)
-      ≡⟨ ≡.cong₂ (λ j' k' → ql ε (w₁ j') k') (ql-dw₁≗id i) (qr-dw₁≗ŝ i) ⟨
-        ql ε (w₁ (ql ε (d w₁) i)) (qr ε (d w₁) i)
-      ≡⟨ qr-ql-ee w₁ i ⟨
-        ql ε (Δ w₁) i
-      ≡⟨ ql-cong₂ Δw₁≗e₁ i ⟩
-        ql ε e₁ i
-      ≡⟨ ql-inner-ε ε i ⟩
-        i
-      ∎
-      where
-        w₁i≡e₁ : w₁ i ≡ e₁
-        w₁i≡e₁ = ≡.cong (if_then e₁ else α i mᵢ) (dec-refl {i = i})
-
-        open ≡.≡-Reasoning
-
-    rŝ-id-i≢j : ∀ j → i ≢ j → r (ŝ j) ≡ j
-    rŝ-id-i≢j j i≢j = ≡.sym eq
+    rs̃-id-i≢j : ∀ j → i ≢ j → r (s̃ j) ≡ j
+    rs̃-id-i≢j j i≢j = ≡.sym eq
       where
         open ≡.≡-Reasoning
 
         w₁j≡αmᵢ : w₁ j ≡ α i mᵢ
         w₁j≡αmᵢ = ≡.cong (if_then e₁ else α i mᵢ) (dec-neq i≢j)
 
-        eq : j ≡ r (ŝ j)
+        eq : j ≡ r (s̃ j)
         eq = begin
             j
           ≡⟨ ql-inner-ε ε j ⟨
@@ -324,12 +247,12 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
             ql ε (Δ w₁) j
           ≡⟨ qr-ql-ee w₁ j ⟩
             ql ε (w₁ (ql ε (d w₁) j)) (qr ε (d w₁) j)
-          ≡⟨ ≡.cong₂ (λ j' k' → ql ε (w₁ j') k') (ql-dw₁≗id j) (qr-dw₁≗ŝ j) ⟩
-            ql ε (w₁ j) (ŝ j)
-          ≡⟨ ≡.cong (λ v → ql ε v (ŝ j)) w₁j≡αmᵢ ⟩
-            ql ε (α i mᵢ) (ŝ j)
+          ≡⟨ ≡.cong₂ (λ j' k' → ql ε (w₁ j') k') (ql-dw₁≗id j) (qr-dw₁≗s̃ j) ⟩
+            ql ε (w₁ j) (s̃ j)
+          ≡⟨ ≡.cong (λ v → ql ε v (s̃ j)) w₁j≡αmᵢ ⟩
+            ql ε (α i mᵢ) (s̃ j)
           ≡⟨⟩
-            r (ŝ j)
+            r (s̃ j)
           ∎
 
     -- There is a preimage r⁻¹(i) or there isn't any.
@@ -345,18 +268,18 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
       rk₀≡i = proj₂ proof
 
       s′ : I → I
-      s′ j = if i == j then k₀ else ŝ j
+      s′ j = if i == j then k₀ else s̃ j
 
       Invʳ-s′ : Invʳ r s′
       Invʳ-s′ j = begin
           r (s′ j)
         ≡⟨⟩
-          r (if i == j then k₀ else ŝ j)
+          r (if i == j then k₀ else s̃ j)
         ≡⟨ case-apply₂ (i == j) r ⟩
-          (if (i == j) then r k₀ else r (ŝ j))
+          (if (i == j) then r k₀ else r (s̃ j))
         ≡⟨ rewrite-under-if-else i j
               (λ i≡j → rk₀≡i ⨾ i≡j)
-              (λ i≢j → rŝ-id-i≢j j i≢j) ⟩
+              (λ i≢j → rs̃-id-i≢j j i≢j) ⟩
           (if (i == j) then j else j)
         ≡⟨ if-dud ⟩
           j
@@ -470,8 +393,8 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
       qr-dw₃≗s : qr ε (d w₃) ≗ s
       qr-dw₃≗s = qr-cong₂ dw₃≗αmᵢ
 
-      ŝ-s-id : ∀ j → j ≡ ŝ (s j)
-      ŝ-s-id j =
+      s̃-s-id : ∀ j → j ≡ s̃ (s j)
+      s̃-s-id j =
         begin
           j
         ≡⟨ qr-outer-ε mᵢ j ⟨
@@ -485,37 +408,37 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
         ≡⟨ ≡.cong (λ v → qr ε v (s j)) w₃rj≡βmᵢ ⟩
           qr ε (β i mᵢ) (s j)
         ≡⟨⟩
-          ŝ (s j)
+          s̃ (s j)
         ∎
         where
           open ≡.≡-Reasoning
           w₃rj≡βmᵢ : w₃ (r j) ≡ β i mᵢ
           w₃rj≡βmᵢ = ≡.cong (if_then _ else β i mᵢ) (dec-neq (i≢rk j))
 
-      -- s is a right inverse of ŝ 
-      Invʳ-ŝ-s : Invʳ ŝ s
-      Invʳ-ŝ-s j = ≡.sym (ŝ-s-id j) 
+      -- s is a right inverse of s̃ 
+      Invʳ-s̃-s : Invʳ s̃ s
+      Invʳ-s̃-s j = ≡.sym (s̃-s-id j) 
 
-      -- ... which then implies s is the inverse of ŝ
-      Invˡ-ŝ-s : Invˡ ŝ s
-      Invˡ-ŝ-s = Fin-lemmata.Invʳ→Invˡ ŝ s Invʳ-ŝ-s
+      -- ... which then implies s is the inverse of s̃
+      Invˡ-s̃-s : Invˡ s̃ s
+      Invˡ-s̃-s = Fin-lemmata.Invʳ→Invˡ s̃ s Invʳ-s̃-s
 
       -- ... which then implies r = s is surjective,
       -- and in fact there's k s.t. i≡rk
-      i≡rŝi : i ≡ r (ŝ i)
-      i≡rŝi =
+      i≡rs̃i : i ≡ r (s̃ i)
+      i≡rs̃i =
         begin
           i
-        ≡⟨ Invˡ-ŝ-s i ⟨
-          s (ŝ i)
-        ≡⟨ r≗s (ŝ i) ⟨
-          r (ŝ i)
+        ≡⟨ Invˡ-s̃-s i ⟨
+          s (s̃ i)
+        ≡⟨ r≗s (s̃ i) ⟨
+          r (s̃ i)
         ∎
         where open ≡.≡-Reasoning
 
       -- ... which contradicts to the hypothesis.
       bad : ⊥
-      bad = i≢rk (ŝ i) i≡rŝi
+      bad = i≢rk (s̃ i) i≡rs̃i
     
     -- Therefore, the inverse of r always exists.
     r-inverse : ∃ λ r⁻¹ → Invᵇ r r⁻¹
@@ -639,8 +562,8 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
     ql-inv-correct : F.Inverseᵇ _≡_ _≡_ (ql ε v) g
     ql-inv-correct = Inv-to-Inverse (ql-g-id , g-ql-id)
 
-  goal : LeftIso raw
-  goal = record {
+  leftIso : LeftIso raw
+  leftIso = record {
       ql⁻¹ = ql-inv-construct.g;
       ql⁻¹-correct = ql-inv-construct.ql-inv-correct
     }

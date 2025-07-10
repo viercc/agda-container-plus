@@ -147,7 +147,6 @@ module preliminary
   _at_ : M → I → M
   _at_ m i = ε • α i m
 
-
   at-ε : ∀ (i : I) → ε at i ≡ ε
   at-ε i =
     begin
@@ -259,44 +258,19 @@ module preliminary
     let open ≡.≡-Reasoning in
     begin
       ql ε (n at_) i
-    ≡⟨ ≡.cong (λ e → ql e (n at_) i) ε-ε ⟨
-      ql (ε • e₁) (n at_) i
-    ≡⟨ ql-cong₂ diag-w i ⟨
-      ql (ε • e₁) (diag ε e₁ w) i
-    ≡⟨ ql-inner-ε ε _ ⟨
-      ql ε e₁ (ql (ε • e₁) (diag ε e₁ w) i)
-    ≡⟨ ql-ql ε e₁ w i ⟩
-      ql ε (zip e₁ w) i
-    ≡⟨⟩
+    ≡⟨ ql-cong₂ (at-ε• v) i ⟩
+      ql ε (Δ w) i
+    ≡⟨ ql-ql-ee w i ⟩
       ql ε (λ j → ε • (v j at_)) i
     ≡⟨ ql-cong₂ (λ j → ε•-at (v j)) i ⟩
       ql ε v i
     ∎
     where
-      e₁ : I → M
-      e₁ = F.const ε
-      
       n : M
       n = ε • v
       
       w : I → I → M
-      w j k = v j at k
-
-      diag-w : diag ε e₁ w ≗ (n at_)
-      diag-w j =
-        let open ≡.≡-Reasoning in
-        begin
-          diag ε e₁ w j
-        ≡⟨⟩
-          w (ql ε e₁ j) (qr ε e₁ j)
-        ≡⟨ ≡.cong₂ w (ql-inner-ε ε j) (qr-outer-ε ε j) ⟩
-          w j j
-        ≡⟨⟩
-          v j at j
-        ≡⟨ at-ε• v j ⟨
-          n at j
-        ∎
-      
+      w j k = v j at k      
 
 module factorization
   {raw : RawMonad' M I}

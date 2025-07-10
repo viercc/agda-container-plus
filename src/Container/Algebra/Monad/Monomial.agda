@@ -292,27 +292,84 @@ module _ {S T : Set s} {I J : Set p}
       law₁ = toIsMonad raw' law'
       law₂ = transferIsMonad iso law₁
 
+-- Various properties
 module IsMonad'-consequences
   {S : Set s} {I : Set p} {raw' : RawMonad' S I}
   (isMonad' : IsMonad' S I raw') where
   open RawMonad' raw'
   open IsMonad' isMonad'
   
-  ε-ε : ε • F.const ε ≡ ε
+  e₁ : I → S
+  e₁ = F.const ε
+
+  ε-ε : ε • e₁ ≡ ε
   ε-ε = •-ε ε
 
+  Δ : (I → I → S) → I → S
+  Δ w i = w i i
+
+  d : (I → I → S) → I → S
+  d w i = ε • w i
+
+  diag-ee : ∀ (w : I → I → S) → diag ε e₁ w ≗ Δ w
+  diag-ee w j = ≡.cong₂ w (ql-inner-ε _ _) (qr-outer-ε _ _)
+
   ε•-ε• : ∀ (w : I → I → S)
-    → (ε • λ i → ε • w i) ≡ ε • λ i → w i i
+    → (ε • λ i → ε • w i) ≡ ε • Δ w
   ε•-ε• w =
     begin
       (ε • λ i → ε • w i)
-    ≡⟨ •-• ε (F.const ε) w ⟨
-      (ε • F.const ε) • diag ε (F.const ε) w
-    ≡⟨ ≡.cong (_• diag ε (F.const ε) w) ε-ε ⟩
-      ε • diag ε (F.const ε) w
-    ≡⟨⟩
-      (ε • λ i → w (ql ε (F.const ε) i) (qr ε (F.const ε) i))
-    ≡⟨ •-cong₂ (λ i → ≡.cong₂ w (ql-inner-ε ε i) (qr-outer-ε ε i)) ⟩
-      (ε • λ i → w i i)
+    ≡⟨ •-• ε e₁ w ⟨
+      (ε • e₁) • diag ε e₁ w
+    ≡⟨ ≡.cong (_• diag ε e₁ w) ε-ε ⟩
+      ε • diag ε e₁ w
+    ≡⟨ •-cong₂ (diag-ee w) ⟩
+      ε • Δ w
+    ∎
+    where open ≡.≡-Reasoning
+
+  ql-ql-ee : ∀ (w : I → I → S) (j : I) →
+    ql ε (Δ w) j ≡ ql ε (d w) j
+  ql-ql-ee w j =
+    begin
+      ql ε (Δ w) j
+    ≡⟨ ≡.cong (λ e → ql e _ _) ε-ε ⟨
+      ql (ε • e₁) (Δ w) j
+    ≡⟨ ql-cong₂ (diag-ee w) j ⟨
+      ql (ε • e₁) (diag ε e₁ w) j
+    ≡⟨ ql-inner-ε ε _ ⟨
+      ql ε e₁ (ql (ε • e₁) (diag ε e₁ w) j)
+    ≡⟨ ql-ql ε e₁ w j ⟩
+      ql ε (d w) j
+    ∎
+    where open ≡.≡-Reasoning
+
+  qr-ql-ee : ∀ (w : I → I → S) (j : I) →
+    ql ε (Δ w) j ≡ ql ε (w (ql ε (d w) j)) (qr ε (d w) j)
+  qr-ql-ee w j =
+    begin
+      ql ε (Δ w) j
+    ≡⟨ ≡.cong (λ e → ql e _ _) ε-ε ⟨
+      ql (ε • e₁) (Δ w) j
+    ≡⟨ ql-cong₂ (diag-ee w) j ⟨
+      ql (ε • e₁) (diag ε e₁ w) j
+    ≡⟨ qr-outer-ε ε _ ⟨
+      qr ε e₁ (ql (ε • e₁) (diag ε e₁ w) j)
+    ≡⟨ qr-ql ε e₁ w j ⟩
+      ql ε (w (ql ε (d w) j)) (qr ε (d w) j)
+    ∎
+    where open ≡.≡-Reasoning
+  
+  qr-qr-ee : ∀ (w : I → I → S) (j : I) →
+    qr ε (Δ w) j ≡ qr ε (w (ql ε (d w) j)) (qr ε (d w) j)
+  qr-qr-ee w j =
+    begin
+      qr ε (Δ w) j
+    ≡⟨ ≡.cong (λ e → qr e _ _) ε-ε ⟨
+      qr (ε • e₁) (Δ w) j
+    ≡⟨ qr-cong₂ (diag-ee w) j ⟨
+      qr (ε • e₁) (diag ε e₁ w) j
+    ≡⟨ qr-qr ε e₁ w j ⟩
+      qr ε (w (ql ε (d w) j)) (qr ε (d w) j)
     ∎
     where open ≡.≡-Reasoning
