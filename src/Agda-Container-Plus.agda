@@ -4,6 +4,9 @@ import Container.Algebra.TensorMonoid
 import Container.Algebra.Monad
 import Container.Algebra.Monad.Uustalu
 import Container.Algebra.Monad.Monomial
+import Container.Algebra.Monad.StateLike
+import Container.Algebra.Monad.Monomial.DecidableEquality
+import Container.Algebra.Monad.Monomial.FinitePosition
 
 import Container.Combinator.Compose
 import Container.Combinator.Compose.Properties
