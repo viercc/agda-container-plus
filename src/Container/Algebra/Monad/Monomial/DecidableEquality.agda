@@ -59,6 +59,16 @@ module bool-lemmata {ℓ} {A : Set ℓ} where
   if-and false _ = ≡.refl
   if-and true false = ≡.refl
   if-and true true = ≡.refl
+  
+  if-then-if : ∀ (cond : Bool) {x y z : A}
+    → (if cond then (if cond then x else y) else z) ≡ (if cond then x else z)
+  if-then-if false = ≡.refl
+  if-then-if true = ≡.refl
+
+  if-else-if : ∀ (cond : Bool) {x y z : A}
+    → (if cond then x else (if cond then y else z)) ≡ (if cond then x else z)
+  if-else-if false = ≡.refl
+  if-else-if true = ≡.refl
 open bool-lemmata
 
 module DecEq-lemmata where
@@ -67,15 +77,18 @@ module DecEq-lemmata where
   _==_ : I → I → Bool
   _==_ x y = ⌊ x ≟ y ⌋
 
-  dec-refl : ∀ {i : I} → (i == i) ≡ true
-  dec-refl {i} with i ≟ i
+  dec-eq : ∀ {i j : I} → (i ≡ j) → (i == j) ≡ true
+  dec-eq {i} {j} i≡j with i ≟ j
   ... | yes _ = ≡.refl
-  ... | no absurdity = ⊥-elim (absurdity ≡.refl)
+  ... | no i≢j = ⊥-elim (i≢j i≡j)
 
   dec-neq : ∀ {i j : I} → (i ≢ j) → (i == j) ≡ false
   dec-neq {i} {j} i≢j with i ≟ j
   ... | yes i≡j = ⊥-elim (i≢j i≡j)
   ... | no _ = ≡.refl
+
+  dec-refl : ∀ {i : I} → (i == i) ≡ true
+  dec-refl = dec-eq ≡.refl
 
   elim-if-refl : ∀ {i : I} {a} {A : Set a} {x y : A}
     → (if i == i then x else y) ≡ x
@@ -86,6 +99,15 @@ module DecEq-lemmata where
   rewrite-under-if i j rewriter with i ≟ j
   ... | yes i≡j = rewriter i≡j
   ... | no _ = ≡.refl
+
+  rewrite-under-if-else : ∀ (i j : I) {a}
+      {A : Set a} {x₁ x₂ y₁ y₂ : A}
+    → (i ≡ j → x₁ ≡ x₂)
+    → (i ≢ j → y₁ ≡ y₂)
+    → (if i == j then x₁ else y₁) ≡ (if i == j then x₂ else y₂)
+  rewrite-under-if-else i j rewriter-x rewriter-y with i ≟ j
+  ... | yes i≡j = rewriter-x i≡j
+  ... | no i≢j = rewriter-y i≢j
 
   ==-sym : ∀ {i j : I} → (i == j) ≡ (j == i)
   ==-sym {i} {j} with i ≟ j | j ≟ i
@@ -211,6 +233,27 @@ module preliminary
     ∎
     where open ≡.≡-Reasoning
   
+  ε•β-at : ∀ (m : M) (i : I) → ε • β i (m at i) ≡ ε
+  ε•β-at m i =
+    begin
+      (ε • β i (m at i))
+    ≡⟨⟩
+      (ε • λ j → if i == j then ε else ε • α i m)
+    ≡⟨ •-cong₂ (λ j → ≡.cong (if i == j then_else ε • α i m) ε-ε) ⟨
+      (ε • λ j → if i == j then ε • F.const ε else ε • α i m)
+    ≡⟨ •-cong₂ (λ j → case-apply₂ (i == j) (ε •_)) ⟨
+      (ε • λ j → ε • (if i == j then F.const ε else α i m))
+    ≡⟨ ε•-ε• _ ⟩
+      (ε • λ j → (if i == j then F.const ε else α i m) j)
+    ≡⟨ •-cong₂ (λ j → case-apply₁ (i == j) (F.const ε) (α i m)) ⟩
+      (ε • λ j → if i == j then ε else (if i == j then m else ε))
+    ≡⟨ •-cong₂ (λ j → ≡.trans (if-else-if (i == j)) if-dud) ⟩
+      (ε • λ i → ε)
+    ≡⟨ ε-ε ⟩
+      ε
+    ∎
+    where open ≡.≡-Reasoning
+
   ql-ε-at : ∀ (v : I → M) (i : I) → ql ε ((ε • v) at_) i ≡ ql ε v i
   ql-ε-at v i =
     let open ≡.≡-Reasoning in
