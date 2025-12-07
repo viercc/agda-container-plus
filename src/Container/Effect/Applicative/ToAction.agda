@@ -181,16 +181,14 @@ module _ (applicative : Applicative ⟦ Con ⟧ _≈_) where
                 (x · (y · z) , λ p → ϕleft p , ϕleft (ϕright p) , ϕright (ϕright p))
               ∎
 
-        open import Algebra.Structures.PatternSynonyms
+        assoc : (x y z : S) → (x · y) · z ≡ x · (y · z)
+        assoc x y z = unfolded-assoc x y z .shape
 
-        isMonoid : IsMonoid _≡_ _·_ ε
-        isMonoid =
-          mkIsMonoid ≡.isEquivalence (≡.cong₂ _·_)
-            (λ x y z → unfolded-assoc x y z .shape)
-            (λ x → unfolded-left-id x .shape)
-            (λ x → unfolded-right-id x .shape)
+        identityˡ : (x : S) → ε · x ≡ x
+        identityˡ x = unfolded-left-id x .shape
         
-        open IsMonoid isMonoid
+        identityʳ : (x : S) → x · ε ≡ x
+        identityʳ x = unfolded-right-id x .shape
 
         lift≡ : {x y : S} → (x ≡ y) → P x → P y
         lift≡ = ≡.subst P

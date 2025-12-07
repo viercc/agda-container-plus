@@ -5,6 +5,7 @@ module Container.Algebra.Action where
 open import Level
 
 open import Function using (_∘_; _∘′_; id; _$_; const)
+open import Data.Product using (_,_)
 
 open import Relation.Binary using (Rel; Setoid; IsEquivalence)
 
@@ -13,7 +14,8 @@ open import Relation.Binary.PropositionalEquality as ≡
 
 open import Data.Container.Core
 
-open import Algebra using (Op₂; RawMonoid; IsMonoid; Monoid)
+open import Algebra using
+  (Op₂; RawMonoid; IsMagma; IsSemigroup; IsMonoid; Monoid)
 
 private
   variable
@@ -30,6 +32,13 @@ instance
 
 ≗-setoid : ∀ {x y} (X : Set x) (Y : Set y) → Setoid (x ⊔ y) (x ⊔ y)
 ≗-setoid X Y = record { isEquivalence = ≗-isEquivalence {X = X} {Y = Y} }
+
+anythingIsMagma : ∀ {s} {S : Set s} {_·_ : Op₂ S}
+  → IsMagma _≡_ _·_
+anythingIsMagma = record {
+    isEquivalence = ≡.isEquivalence;
+    ∙-cong = ≡.cong₂ _
+  }
 
 module ContainerUtil (Con : Container s p) where
   open Container Con renaming (Shape to S; Position to P) public
@@ -82,24 +91,33 @@ record IsAction (Con : Container s p) (raw : RawAction Con) : Set (s ⊔ p) wher
   open ContainerUtil Con
 
   field
-    instance
-      isMonoid : IsMonoid _≡_ _·_ ε
-  
-  open IsMonoid isMonoid using (assoc; identityˡ; identityʳ) public
-  
-  field
+    assoc : (x y z : S) → (x · y) · z ≡ x · (y · z)
+    identityˡ : (x : S) → ε · x ≡ x
+    identityʳ : (x : S) → x · ε ≡ x
+
     ϕleft-id : (x : S) → ϕleft ≗ [ identityʳ x ]
-    
     ϕright-id : (x : S) → ϕright ≗ [ identityˡ x ]
-    
     ϕleft-homo : (x y z : S)
       → ϕleft ∘ ϕleft ≗ ϕleft ∘ [ assoc x y z ]
-    
     ϕright-homo : (x y z : S)
       → ϕright ≗ ϕright ∘ ϕright ∘ [ assoc x y z ]
-    
     ϕinterchange : (x y z : S)
       → ϕright ∘ ϕleft ≗ ϕleft ∘ ϕright ∘ [ assoc x y z ]
+  
+  instance
+    isMagma : IsMagma _≡_ _·_
+    isMagma = anythingIsMagma
+
+    isSemigroup : IsSemigroup _≡_ _·_
+    isSemigroup = record {
+        isMagma = isMagma;
+        assoc = assoc
+      }
+    isMonoid : IsMonoid _≡_ _·_ ε
+    isMonoid = record {
+        isSemigroup = isSemigroup;
+        identity = identityˡ , identityʳ
+      }
 
 record Action (Con : Container s p) : Set (s ⊔ p) where
   field

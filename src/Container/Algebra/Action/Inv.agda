@@ -46,11 +46,20 @@ record IsActionInv (Con : Container s p) (raw : RawActionInv Con) : Set (s ⊔ p
   field
     instance
       isAction : IsAction Con rawAction
-    instance
-      isGroup : IsGroup _≡_ _·_ ε _⁻¹
-
+  
   open IsAction isAction public
-  open IsGroup isGroup using (inverseˡ; inverseʳ) public
+
+  field
+    inverseˡ : (x : S) → x ⁻¹ · x ≡ ε
+    inverseʳ : (x : S) → x · x ⁻¹ ≡ ε
+  
+  instance
+    isGroup : IsGroup _≡_ _·_ ε _⁻¹
+    isGroup = record {
+        isMonoid = isMonoid;
+        ⁻¹-cong = ≡.cong _⁻¹;
+        inverse = Prod._,_ inverseˡ inverseʳ
+      }
 
 record ActionInv (Con : Container s p) : Set (s ⊔ p) where
   field
@@ -173,7 +182,9 @@ module standardize {Con : Container s p} (originalActionInv : ActionInv Con) (ui
 
     isAction : IsAction Std rawAction
     isAction = record {
-        isMonoid = isMonoid;
+        identityˡ = identityˡ;
+        identityʳ = identityʳ;
+        assoc = assoc;
         ϕleft-id = λ _ → wrap refl;
         ϕright-id = λ _ → wrap ψright-id;
         ϕleft-homo = λ _ _ _ → wrap refl;

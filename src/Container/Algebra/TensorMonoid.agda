@@ -140,42 +140,40 @@ module ToAction {s p} (Con : Container s p) where
   module _ (raw : RawMonoid Con) (law : IsMonoid Con raw) where
     open RawMonoid raw
     open IsMonoid law
+      renaming (assoc to ⊗-assoc)
 
     private
       rawAction = toRawAction raw
       open RawAction rawAction
-      
-      import Algebra.Structures
-      open import Algebra.Structures.PatternSynonyms
 
       module lawImpl where
-        isMonoid : Algebra.Structures.IsMonoid _≡_ _·_ ε
-        isMonoid =
-          mkIsMonoid ≡.isEquivalence (≡.cong₂ _·_)
-            (λ x y z → assoc ._≈_.shape ((x , y) , z))
-            (λ x → left-unit ._≈_.shape (tt , x))
-            (λ x → right-unit ._≈_.shape (x , tt))
+        assoc : (x y z : S) → (x · y) · z ≡ x · (y · z)
+        assoc x y z = ⊗-assoc ._≈_.shape ((x , y) , z)
 
-        module SM = Algebra.Structures.IsMonoid isMonoid
-        
+        identityˡ : (x : S) → ε · x ≡ x
+        identityˡ x = left-unit ._≈_.shape (tt , x)
+
+        identityʳ : (x : S) → x · ε ≡ x
+        identityʳ x = right-unit ._≈_.shape (x , tt)
+
         open import Data.Product.Properties
           using ()
           renaming (,-injectiveˡ to injective-l; ,-injectiveʳ to injective-r)
         
-        ϕleft-id : (x : S) → ϕleft ≗ ≡.subst P (SM.identityʳ x)
+        ϕleft-id : (x : S) → ϕleft ≗ ≡.subst P (identityʳ x)
         ϕleft-id x p = injective-l (right-unit ._≈_.position (x , tt) p)
         
-        ϕright-id : (x : S) → ϕright ≗ ≡.subst P (SM.identityˡ x)
+        ϕright-id : (x : S) → ϕright ≗ ≡.subst P (identityˡ x)
         ϕright-id x p = injective-r (left-unit ._≈_.position (tt , x) p)
 
-        ϕleft-homo : (x y z : S) → ϕleft F.∘ ϕleft ≗ ϕleft F.∘ ≡.subst P (SM.assoc x y z)
-        ϕleft-homo x y z p = injective-l (injective-l (assoc ._≈_.position _ p))
+        ϕleft-homo : (x y z : S) → ϕleft F.∘ ϕleft ≗ ϕleft F.∘ ≡.subst P (assoc x y z)
+        ϕleft-homo x y z p = injective-l (injective-l (⊗-assoc ._≈_.position _ p))
 
-        ϕinterchange : (x y z : S) → ϕright F.∘ ϕleft ≗ ϕleft F.∘ ϕright F.∘ ≡.subst P (SM.assoc x y z)
-        ϕinterchange x y z p = injective-r (injective-l (assoc ._≈_.position _ p))
+        ϕinterchange : (x y z : S) → ϕright F.∘ ϕleft ≗ ϕleft F.∘ ϕright F.∘ ≡.subst P (assoc x y z)
+        ϕinterchange x y z p = injective-r (injective-l (⊗-assoc ._≈_.position _ p))
 
-        ϕright-homo : (x y z : S) → ϕright ≗ ϕright F.∘ ϕright F.∘ ≡.subst P (SM.assoc x y z)
-        ϕright-homo x y z p = injective-r (assoc ._≈_.position _ p)
+        ϕright-homo : (x y z : S) → ϕright ≗ ϕright F.∘ ϕright F.∘ ≡.subst P (assoc x y z)
+        ϕright-homo x y z p = injective-r (⊗-assoc ._≈_.position _ p)
 
     toIsAction : IsAction Con rawAction
     toIsAction = record {lawImpl}
