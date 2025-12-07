@@ -1,3 +1,7 @@
+import Container.Lax
+import Container.Morphism.Equality
+import Container.Morphism.Iso
+
 import Container.Algebra.Action
 import Container.Algebra.Action.Inv
 import Container.Algebra.TensorMonoid
@@ -9,15 +13,14 @@ import Container.Algebra.Monad.Monomial.DecidableEquality
 import Container.Algebra.Monad.Monomial.FinitePosition
 
 import Container.Combinator.Compose
+import Container.Combinator.Compose.Lax
 import Container.Combinator.Compose.Properties
 import Container.Combinator.Tensor
 import Container.Combinator.Tensor.Properties
 import Container.Combinator.Monoidal
 
-import Container.Morphism.Equality
-import Container.Morphism.Iso
-
 import Container.Effect.Functor
+import Container.Effect.Functor.Lax
 import Container.Effect.Applicative.FromAction
 import Container.Effect.Applicative.ToAction
 
