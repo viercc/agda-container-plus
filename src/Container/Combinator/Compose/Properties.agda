@@ -22,33 +22,12 @@ open import Container.Morphism.Equality using (_≈_; mk≈)
 open import Container.Morphism.Iso using (_⇔_; mk⇔)
 
 open import Container.Combinator.Compose
-open import Container.Combinator.Monoidal
 
 private
   variable
     c c' d d' e e' f f' : Level
 
 open IsEquivalence {{...}}
-
-module _ {c c' d d' : Level} where
-  functorial₁ : {D : Container d d'} → Functorial {c = c} {c' = c'} (λ C → Comp C D) map₁
-  functorial₁ {D = D} = record {
-      map-id = refl;
-      map-∘ = λ _ _ → refl
-    }
-
-  functorial₂ : {C : Container c c'} → Functorial {c = d} {c' = d'} (Comp C) map₂
-  functorial₂ {C = C} = record {
-      map-id = refl;
-      map-∘ = λ _ _ → refl
-    }
-
-  bifunctorial : Bifunctorial Comp map₁ map₂
-  bifunctorial = record {
-      functorial₁ = functorial₁;
-      functorial₂ = functorial₂;
-      map₁-map₂ = λ _ _ → refl
-    }
 
 open _⇔_
 open ◇-util
@@ -61,13 +40,6 @@ module _ {c c' d d' e e'}
   {E : Container e e'} where
   assoc⇔ : Comp (Comp C D) E ⇔ Comp C (Comp D E)
   assoc⇔ = mk⇔ assocʳ assocˡ refl refl
-
-semigroupal : {c : Level} → Semigroupal {c = c} {c' = c} Comp map₁ map₂ assoc⇔
-semigroupal {c} = record {
-    bifunctorial = bifunctorial;
-    assoc-nat = λ _ _ _ → refl;
-    pentagon = refl
-  }
 
 -- Units
 module _ {c c'} {C : Container c c'} where
@@ -84,12 +56,3 @@ module _ {c c'} {C : Container c c'} where
       to-from = refl;
       from-to = refl
     }
-
-monoidal : {c : Level} → Monoidal {c = c} {c' = c} Comp Id map₁ map₂ assoc⇔ unitLeft⇔ unitRight⇔
-monoidal {c} = record {
-    semigroupal = semigroupal;
-    unitl-nat = λ _ → refl;
-    unitr-nat = λ _ → refl;
-    unit-unit = refl;
-    assoc-unit = refl
-  }

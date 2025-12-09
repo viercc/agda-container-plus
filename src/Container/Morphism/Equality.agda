@@ -138,6 +138,19 @@ module _ {s₁ p₁ s₂ p₂ s₃ p₃}
 
           open ≡.≡-Reasoning
 
+module _ {s₁ p₁ s₂ p₂ s₃ p₃ s₄ p₄}
+  {C₁ : Container s₁ p₁}
+  {C₂ : Container s₂ p₂}
+  {C₃ : Container s₃ p₃}
+  {C₄ : Container s₄ p₄} where
+  import Data.Container.Morphism as CM
+
+  ∘-cong-mid : (α : C₃ ⇒ C₄)
+    → {β₁ β₂ : C₂ ⇒ C₃} → (β₁ ≈ β₂)
+    → (γ : C₁ ⇒ C₂)
+    → α CM.∘ β₁ CM.∘ γ ≈ α CM.∘ β₂ CM.∘ γ
+  ∘-cong-mid α β≈ γ = ∘-cong₁ (∘-cong₂ α β≈) γ
+
 module _ {s₁ p₁ s₂ p₂} (C₁ : Container s₁ p₁) (C₂ : Container s₂ p₂) where
   -- Variant of _≈_ taking C₁, C₂ as explicit argument
   Eq : Rel (C₁ ⇒ C₂) (s₁ ⊔ s₂ ⊔ p₁ ⊔ p₂)

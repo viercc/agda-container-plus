@@ -18,12 +18,15 @@ open import Data.Container.Core renaming (map to map⟦⟧)
 open import Data.Container.Morphism using (id; _∘_)
 import Data.Container.Combinator as CC
 open CC using ()
-  renaming (id to Id; _∘_ to Comp; to-∘ to to-Comp; from-∘ to from-Comp)
+  renaming (_∘_ to Comp; to-∘ to to-Comp; from-∘ to from-Comp)
   public
 
 private
   variable
     c c' d d' e e' f f' : Level
+
+Id : Container 0ℓ 0ℓ
+Id = CC.id
 
 module ◇-util where
   open import Relation.Binary.PropositionalEquality as ≡
@@ -124,18 +127,14 @@ module _ {c c' d d' e e'}
 
 -- Units
 module _ {c c'} {C : Container c c'} where
-  private
-    Id' : Container c c'
-    Id' = Id
-
-  unitLeft : Comp Id' C ⇒ C
+  unitLeft : Comp Id C ⇒ C
   unitLeft = CC.from-id ▷ λ p → mk◇ (tt , p)
 
-  ununitLeft : C ⇒ Comp Id' C
+  ununitLeft : C ⇒ Comp Id C
   ununitLeft = CC.to-id ▷ λ (mk◇ (_ , p)) → p
 
-  unitRight : Comp C Id' ⇒ C
+  unitRight : Comp C Id ⇒ C
   unitRight = proj₁ ▷ λ p → mk◇ (p , tt)
 
-  ununitRight : C ⇒ Comp C Id'
+  ununitRight : C ⇒ Comp C Id
   ununitRight = (λ s → s , F.const tt) ▷ λ (mk◇ (p , _)) → p

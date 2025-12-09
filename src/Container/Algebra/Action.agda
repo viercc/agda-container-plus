@@ -5,7 +5,8 @@ module Container.Algebra.Action where
 open import Level
 
 open import Function using (_∘_; _∘′_; id; _$_; const)
-open import Data.Product using (_,_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Unit.Polymorphic.Base using (⊤; tt)
 
 open import Relation.Binary using (Rel; Setoid; IsEquivalence)
 
@@ -13,6 +14,8 @@ open import Relation.Binary.PropositionalEquality as ≡
     using (_≡_; _≗_)
 
 open import Data.Container.Core
+open import Container.Morphism.Equality
+open import Container.Morphism.Iso
 
 open import Algebra using
   (Op₂; RawMonoid; IsMagma; IsSemigroup; IsMonoid; Monoid)
@@ -252,6 +255,133 @@ module Action-properties {Con : Container s p} (action : Action Con) where
       eq3' : (x' · (x · y)) · (z · z') ≡ ((x' · x) · y) · (z · z')
       eq3' = ≡.cong₂ _·_ (≡.sym eq3) ≡.refl
 
+module _ {s p} (Con : Container s p) where
+  open Container Con renaming (Shape to S; Position to P)
+  import Data.Container.Morphism as CM
+  open import Container.Combinator.Tensor
+  import Container.Algebra.TensorMonoid as ⊗
+
+  module _ (raw : RawAction Con) where
+    open RawAction raw
+    private
+      module impl where
+        unit : Id ⇒ Con
+        unit = const ε ▷ const tt
+
+        mult : Con ⊗ Con ⇒ Con
+        mult .shape (x , y) = x · y
+        mult .position {s = x , y} p = ϕleft p , ϕright p
+
+    packRaw : ⊗.RawMonoid Con
+    packRaw = record { impl }
+  
+  module _ {raw : RawAction Con} (law : IsAction Con raw) where
+    open RawAction raw
+    open IsAction law renaming
+      (identityˡ to S-identity-l;
+      identityʳ to S-identity-r;
+      assoc to S-assoc)
+
+    raw' : ⊗.RawMonoid Con
+    raw' = packRaw raw
+    
+    open ⊗.RawMonoid raw'
+
+    private
+      module impl where
+        left-unit : mult CM.∘ map₁ unit ≈ unitLeft
+        left-unit = mk≈
+          (λ (_ , x) → S-identity-l x)
+          (λ (_ , x) p → ≡.cong (tt ,_) (ϕright-id x p))
+        
+        right-unit : mult CM.∘ map₂ unit ≈ unitRight
+        right-unit = mk≈
+          (λ (x , _) → S-identity-r x)
+          (λ (x , _) p → ≡.cong (_, tt) (ϕleft-id x p))
+        
+        assoc : mult CM.∘ map₁ mult ≈ mult CM.∘ map₂ mult CM.∘ assocʳ
+        assoc = mk≈
+          (λ ((x , y) , z) → S-assoc x y z)
+          (λ ((x , y) , z) → eqP x y z)
+          where
+            eqP : ∀ (x y z : S) (p : P ((x · y) · z)) → _
+            eqP x y z p =
+              let eq1 = ϕleft-homo x y z p
+                  eq2 = ϕinterchange x y z p
+                  eq3 = ϕright-homo x y z p
+              in ≡.cong₂ _,_ (≡.cong₂ _,_ eq1 eq2) eq3 
+    
+    packLaw : ⊗.IsMonoid Con raw'
+    packLaw = record { impl }
+  
+  module _ (act : Action Con) where
+    open Action act
+    pack : ⊗.Monoid Con
+    pack = record {
+        rawMonoid = packRaw rawAction;
+        isMonoid = packLaw isAction
+      }
+
+  module _ (raw : ⊗.RawMonoid Con) where
+    open ⊗.RawMonoid raw
+    
+    unpackRaw : RawAction Con
+    unpackRaw = record {rawImpl}
+      where
+        module rawImpl where
+          ε : S
+          ε = unit .shape tt
+
+          _·_ : S → S → S
+          _·_ x y = mult .shape (x , y)
+
+          ϕleft : {x y : S} → P (x · y) → P x
+          ϕleft p = mult .position p .proj₁
+
+          ϕright : {x y : S} → P (x · y) → P y
+          ϕright p = mult .position p .proj₂
+
+  module _ {raw : ⊗.RawMonoid Con} (law : ⊗.IsMonoid Con raw) where
+    open ⊗.RawMonoid raw
+    open ⊗.IsMonoid law
+      renaming (assoc to ⊗-assoc)
+
+    private
+      rawAction = unpackRaw raw
+      open RawAction rawAction
+
+      module lawImpl where
+        assoc : (x y z : S) → (x · y) · z ≡ x · (y · z)
+        assoc x y z = ⊗-assoc ._≈_.shape ((x , y) , z)
+
+        identityˡ : (x : S) → ε · x ≡ x
+        identityˡ x = left-unit ._≈_.shape (tt , x)
+
+        identityʳ : (x : S) → x · ε ≡ x
+        identityʳ x = right-unit ._≈_.shape (x , tt)
+
+        open import Data.Product.Properties
+          using ()
+          renaming (,-injectiveˡ to injective-l; ,-injectiveʳ to injective-r)
+        
+        ϕleft-id : (x : S) → ϕleft ≗ ≡.subst P (identityʳ x)
+        ϕleft-id x p = injective-l (right-unit ._≈_.position (x , tt) p)
+        
+        ϕright-id : (x : S) → ϕright ≗ ≡.subst P (identityˡ x)
+        ϕright-id x p = injective-r (left-unit ._≈_.position (tt , x) p)
+
+        ϕleft-homo : (x y z : S) → ϕleft ∘ ϕleft ≗ ϕleft ∘ ≡.subst P (assoc x y z)
+        ϕleft-homo x y z p = injective-l (injective-l (⊗-assoc ._≈_.position _ p))
+
+        ϕinterchange : (x y z : S) → ϕright ∘ ϕleft ≗ ϕleft ∘ ϕright ∘ ≡.subst P (assoc x y z)
+        ϕinterchange x y z p = injective-r (injective-l (⊗-assoc ._≈_.position _ p))
+
+        ϕright-homo : (x y z : S) → ϕright ≗ ϕright ∘ ϕright ∘ ≡.subst P (assoc x y z)
+        ϕright-homo x y z p = injective-r (⊗-assoc ._≈_.position _ p)
+
+    unpackLaw : IsAction Con rawAction
+    unpackLaw = record {lawImpl}
+
 module _ {C D : Container s p} (actionC : Action C) (actionD : Action D) where
   private
     module AC = Action actionC 
@@ -267,11 +397,12 @@ module _ {C D : Container s p} (actionC : Action C) (actionD : Action D) where
     field
       -- f is monoid homomorphism
       f-ε : f ε ≡ ε
-      f-· : ∀ (x y : C₀) → f x · f y ≡ f (x · y)
+      f-· : ∀ (x y : C₀) → f (x · y) ≡ f x · f y
 
       -- preservation of ϕleft,ϕright
-      f#-ϕleft : ∀ (x y : C₀) (p : D₁ (f x · f y))
-        → f# (ϕleft p) ≡ ϕleft (f# (≡.subst D₁ (f-· x y) p))
+      f#-ϕleft : ∀ (x y : C₀) (p : D₁ (f (x · y)))
+        → ϕleft (f# p) ≡ f# (ϕleft (≡.subst D₁ (f-· x y) p))
       
-      f#-ϕright : ∀ (x y : C₀) (p : D₁ (f x · f y))
-        → f# (ϕright p) ≡ ϕright (f# (≡.subst D₁ (f-· x y) p))
+      f#-ϕright : ∀ (x y : C₀) (p : D₁ (f (x · y)))
+        → ϕright (f# p) ≡ f# (ϕright (≡.subst D₁ (f-· x y) p))
+  

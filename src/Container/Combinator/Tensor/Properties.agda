@@ -15,21 +15,22 @@ open Prod using (_×_; proj₁; proj₂; _,_)
 open import Data.Unit.Polymorphic.Base using (⊤; tt)
 
 open import Relation.Binary using (Rel; Setoid; IsEquivalence)
+import Relation.Binary.Reasoning.Setoid as Reasoning
 import Relation.Binary.PropositionalEquality as ≡
 open ≡ using (_≡_; _≗_)
 
 open import Data.Container.Core
 
-import Container.Morphism.Equality using (isEquivalence)
+import Container.Morphism.Equality as MorphismEq
 open import Container.Morphism.Iso using (_⇔_; mk⇔)
 
-open import Container.Combinator.Monoidal
 open import Container.Combinator.Tensor
 
 open import Effect.Functor.Day using (Day; day)
 
 open IsEquivalence {{...}}
 
+-- Relation to the Day convolution of interpreted Functors
 module correct {c c' d d' x} (C : Container c c') (D : Container d d') where
   open Container C renaming (Shape to S₁; Position to P₁)
   open Container D renaming (Shape to S₂; Position to P₂)
@@ -98,25 +99,62 @@ module correct {c c' d d' x} (C : Container c c') (D : Container d d') where
       inverse = inverseˡ , inverseʳ
     }
 
-module _ {c c' d d' : Level} where
-  functorial₁ : {D : Container d d'} → Functorial {c = c} {c' = c'} (_⊗ D) map₁
-  functorial₁ {D = D} = record {
-      map-id = refl;
-      map-∘ = λ _ _ → refl
-    }
+subst-×₁ : ∀ {s p c}
+  {S : Set s} (P : S → Set p)
+  {C : Set c} (y : C)
+  {s₁ s₂ : S} {p₁ : P s₁}
+  (eq : s₁ ≡ s₂)
+  → ≡.subst (λ s → P s × C) eq (p₁ , y)
+     ≡ (≡.subst P eq p₁ , y)
+subst-×₁ P y = ≡.subst-application′ P (λ _ → (_, y))
 
-  functorial₂ : {C : Container c c'} → Functorial {c = d} {c' = d'} (C ⊗_) map₂
-  functorial₂ {C = C} = record {
-      map-id = refl;
-      map-∘ = λ _ _ → refl
-    }
+module _ {c₁ c₁' c₂ c₂' d d'}
+  {C₁ : Container c₁ c₁'} {C₂ : Container c₂ c₂'} {D : Container d d'} where
+  open import Data.Container.Morphism using (_∘_)
+  open MorphismEq using (_≈_; mk≈)
 
-  bifunctorial : Bifunctorial _⊗_ map₁ map₂
-  bifunctorial = record {
-      functorial₁ = functorial₁;
-      functorial₂ = functorial₂;
-      map₁-map₂ = λ _ _ → refl
-    }
+  map₁-swap : ∀ {ff : C₁ ⇒ C₂} → map₁ {D = D} ff ∘ swap ≈ swap ∘ map₂ {C = D} ff
+  map₁-swap = refl
+
+module _ {c₁ c₁' c₂ c₂' d d'}
+  {C₁ : Container c₁ c₁'} {C₂ : Container c₂ c₂'} {D : Container d d'} where
+  open Container C₁ renaming (Shape to S₁; Position to P₁) 
+  open Container C₂ renaming (Shape to S₂; Position to P₂)
+  open Container D renaming (Shape to T; Position to Q)
+  open MorphismEq
+  open import Data.Container.Morphism using (_∘_)
+
+  map₁-cong : ∀ {ff gg : C₁ ⇒ C₂} → (ff ≈ gg) → map₁ {D = D} ff ≈ map₁ gg
+  map₁-cong {ff = f ▷ f#} {gg = g ▷ g#} (mk≈ shapeEq posEq) = mk≈ shapeEq' posEq'
+    where
+      shapeEq' : ∀ (st : S₁ × T) → _
+      shapeEq' (s , t) = ≡.cong (_, t) (shapeEq s)
+
+      posEq' : ∀ (st : S₁ × T) (pq : P₂ (f (proj₁ st)) × Q (proj₂ st)) → _
+      posEq' (s , t) (p , q) = begin
+          (f# {s = s} p , q)
+        ≡⟨ ≡.cong (_, q) (posEq s p) ⟩
+          (g# (≡.subst P₂ (shapeEq s) p) , q)
+        ≡⟨⟩
+          Prod.map₁ g# (≡.subst P₂ (shapeEq s) p , q)
+        ≡⟨ ≡.cong (Prod.map₁ g#) (subst-×₁ P₂ q (shapeEq s)) ⟨
+          Prod.map₁ g# (≡.subst (λ s₂ → P₂ s₂ × Q t) (shapeEq s) (p , q))
+        ≡⟨ ≡.cong (Prod.map₁ g#) (≡.subst-∘ {f = (_, t)} (shapeEq s)) ⟩
+          Prod.map₁ g# (≡.subst (Position (C₂ ⊗ D)) (shapeEq' (s , t)) (p , q))
+        ∎
+        where open ≡.≡-Reasoning
+  
+  map₂-cong : ∀ {ff gg : C₁ ⇒ C₂} → (ff ≈ gg) → map₂ {C = D} ff ≈ map₂ gg
+  map₂-cong {ff = ff} {gg = gg} ff≈gg = begin
+      map₂ {C = D} ff
+    ≈⟨ refl ⟩
+      swap ∘ map₁ ff ∘ swap
+    ≈⟨ ∘-cong₁ (∘-cong₂ swap (map₁-cong ff≈gg)) swap ⟩
+      swap ∘ map₁ gg ∘ swap
+    ≈⟨ refl ⟩
+      map₂ gg
+    ∎
+    where open Reasoning ≈-setoid
 
 open _⇔_
 
@@ -126,15 +164,9 @@ module _ {c c' d d' e e'}
   {C : Container c c'}
   {D : Container d d'}
   {E : Container e e'} where
+
   assoc⇔ : (C ⊗ D) ⊗ E ⇔ C ⊗ (D ⊗ E)
   assoc⇔ = mk⇔ assocʳ assocˡ refl refl
-
-semigroupal : {c c' : Level} → Semigroupal {c = c} {c' = c'} _⊗_ map₁ map₂ assoc⇔
-semigroupal = record {
-    bifunctorial = bifunctorial;
-    assoc-nat = λ _ _ _ → refl;
-    pentagon = refl
-  }
 
 -- Units
 module _ {c c'} {C : Container c c'} where
@@ -152,15 +184,6 @@ module _ {c c'} {C : Container c c'} where
       from-to = refl
     }
 
-monoidal : {c : Level} → Monoidal {c = c} {c' = c} _⊗_ Id map₁ map₂ assoc⇔ unitLeft⇔ unitRight⇔
-monoidal {c} = record {
-    semigroupal = semigroupal;
-    unitl-nat = λ _ → refl;
-    unitr-nat = λ _ → refl;
-    unit-unit = refl;
-    assoc-unit = refl
-  }
-
 module _ {c c' d d'} {C : Container c c'} {D : Container d d'} where
   swap⇔ : C ⊗ D ⇔ D ⊗ C
   swap⇔ = record {
@@ -174,16 +197,15 @@ module _ {c c' d d' e e'} {C : Container c c'} {D : Container d d'} {E : Contain
   open import Data.Container.Morphism using (_∘_)
   open import Container.Morphism.Equality using (_≈_)
 
-  private
-    braid₁ braid₂ : (C ⊗ D) ⊗ E ⇒ D ⊗ (E ⊗ C)
-    braid₁ = assocʳ ∘ swap ∘ assocʳ
-    braid₂ = map₂ swap ∘ assocʳ ∘ map₁ swap
+  braid₁ braid₂ : (C ⊗ D) ⊗ E ⇒ D ⊗ (E ⊗ C)
+  braid₁ = assocʳ ∘ swap ∘ assocʳ
+  braid₂ = map₂ swap ∘ assocʳ ∘ map₁ swap
 
   symmetric : braid₁ ≈ braid₂
   symmetric = refl
 
 -- Conversion into Comp
-module _ {c c' d d'} where
+module _ where
   open import Container.Combinator.Compose as Comp
     using (Comp)
   open import Data.Container.Relation.Unary.Any
@@ -191,17 +213,19 @@ module _ {c c' d d'} where
   open import Data.Container.Morphism using (_∘_)
   open import Container.Morphism.Equality using (_≈_)
   
-  ⊗⇒Comp : (C : Container c c') (D : Container d d') → C ⊗ D ⇒ Comp C D
+  ⊗⇒Comp : ∀ {c c' d d'} (C : Container c c') (D : Container d d') → C ⊗ D ⇒ Comp C D
   ⊗⇒Comp _ _ .shape (c , d) = c , λ _ → d
   ⊗⇒Comp _ _ .position {s = c , d} (mk◇ (pc , pd)) = pc , pd
 
   -- Note: `⊗⇒Comp C D` is neither mono nor epi in general
   -- (but *sometimes* it is, depending on the choice of C and D)
 
-  ⊗⇒Comp-nat₁ : ∀ {C₁ C₂ : Container c c'} {D : Container d d'}
-    → (α : C₁ ⇒ C₂) → ⊗⇒Comp C₂ D ∘ map₁ α ≈ Comp.map₁ α ∘ ⊗⇒Comp C₁ D
-  ⊗⇒Comp-nat₁ _ = refl
+  module _ {c₁ c₁' c₂ c₂' d d'}
+    {C₁ : Container c₁ c₁'} {C₂ : Container c₂ c₂'}
+    {D : Container d d'} where
 
-  ⊗⇒Comp-nat₂ : ∀ {C : Container c c'} {D₁ D₂ : Container d d'}
-    → (β : D₁ ⇒ D₂) → ⊗⇒Comp C D₂ ∘ map₂ β ≈ Comp.map₂ β ∘ ⊗⇒Comp C D₁
-  ⊗⇒Comp-nat₂ _ = refl
+    ⊗⇒Comp-nat₁ : (α : C₁ ⇒ C₂) → ⊗⇒Comp C₂ D ∘ map₁ α ≈ Comp.map₁ α ∘ ⊗⇒Comp C₁ D
+    ⊗⇒Comp-nat₁ _ = refl
+
+    ⊗⇒Comp-nat₂ : (β : C₁ ⇒ C₂) → ⊗⇒Comp D C₂ ∘ map₂ β ≈ Comp.map₂ β ∘ ⊗⇒Comp D C₁
+    ⊗⇒Comp-nat₂ _ = refl

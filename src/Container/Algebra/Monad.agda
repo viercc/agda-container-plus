@@ -45,7 +45,7 @@ record RawMonad {s p} (C : Container s p) : Set (s ⊔ p) where
   open Container C renaming (Shape to S; Position to P) public
   
   field
-    unit : Id {s} {p} ⇒ C
+    unit : Id ⇒ C
     join : Comp C C ⇒ C
 
 record IsMonad (C : Container s p) (raw : RawMonad C) : Set (s ⊔ p) where
@@ -88,7 +88,6 @@ module _ {s p} {C D : Container s p}
       join = to ∘ RawMonad.join rawC ∘ map₁ from ∘ map₂ from
     }
   
-  open import Container.Combinator.Monoidal using (Bifunctorial)
   import Container.Combinator.Compose.Properties as CompProp
 
   transferWell : {rawC : RawMonad C}
@@ -241,7 +240,7 @@ module _ {C : Container s p} {raw : RawMonad C} (law : IsMonad C raw) where
       ≈⟨ refl ⟩
         TM.unitLeft
       ∎
-      where open Reasoning (≈-setoid {C₁ = Id {s} {p} ⊗ C} {C₂ = C})
+      where open Reasoning (≈-setoid {C₁ = Id ⊗ C} {C₂ = C})
     
     right-unit-⊗ : M.mult ∘ ⊗.map₂ M.unit ≈ TM.unitRight
     right-unit-⊗ =
@@ -258,7 +257,7 @@ module _ {C : Container s p} {raw : RawMonad C} (law : IsMonad C raw) where
       ≈⟨ refl ⟩
         TM.unitRight
       ∎
-      where open Reasoning (≈-setoid {C₁ = C ⊗ Id {s} {p}} {C₂ = C})
+      where open Reasoning (≈-setoid {C₁ = C ⊗ Id} {C₂ = C})
     
     assoc-⊗ : M.mult ∘ ⊗.map₁ M.mult ≈ M.mult ∘ ⊗.map₂ M.mult ∘ TM.assocʳ
     assoc-⊗ =

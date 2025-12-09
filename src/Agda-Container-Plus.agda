@@ -17,7 +17,6 @@ import Container.Combinator.Compose.Lax
 import Container.Combinator.Compose.Properties
 import Container.Combinator.Tensor
 import Container.Combinator.Tensor.Properties
-import Container.Combinator.Monoidal
 
 import Container.Effect.Functor
 import Container.Effect.Functor.Lax
