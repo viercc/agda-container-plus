@@ -54,15 +54,18 @@ module _ {C : Container c c'} {D : Container d d'}
       f#-ϕright : ∀ (x y : C₀) (p : D₁ (f (x · y)))
         → ϕright (f# p) ≡ f# (ϕright (≡.subst D₁ (f-· x y) p))
 
-private
-  instance
-    packedRaw : ∀ {C : Container c c'} {{AC : RawAction C}} → RawMonoid C
-    packedRaw {{AC}} = packRaw AC
-
 module _ {C : Container c c'} {D : Container d d'} {{AC : RawAction C}} {{AD : RawAction D}} where
   open Container C renaming (Shape to C₀; Position to C₁)
   open Container D renaming (Shape to D₀; Position to D₁)
   
+  private
+    instance
+      MC : RawMonoid C
+      MC = packRaw AC
+
+      MD : RawMonoid D
+      MD = packRaw AD
+
   packMorphismLaw : ∀ {α : C ⇒ D} → IsMorphism α → ⊗.IsMorphism α
   packMorphismLaw {α = ff@(f ▷ f#)} law = record {impl}
     where
@@ -114,6 +117,14 @@ module _ {C : Container c c'} {D : Container d d'} {{AC : RawAction C}} {{AD : R
         f#-ϕright x y p = ProdProp.,-injectiveʳ (f#-ϕ x y p)
 
 module _ {C : Container c c'} {D : Container d d'} {{AC : RawAction C}} {{AD : RawAction D}} where
+  private
+    instance
+      MC : RawMonoid C
+      MC = packRaw AC
+
+      MD : RawMonoid D
+      MD = packRaw AD
+
   IsIsomorphism : (iso : C ⇔ D) → Set _
   IsIsomorphism (record {to = f; from = g}) =
     IsMorphism f × IsMorphism g
@@ -129,6 +140,21 @@ module _ {C : Container c c'} {D : Container d d'} (iso : C ⇔ D) where
   transferRawAction : RawAction C → RawAction D
   transferRawAction = unpackRaw F.∘ ⊗.transferRawMonoid iso F.∘ packRaw
 
+  module _ {{AC : RawAction C}} where
+    private
+      instance
+        MC : RawMonoid C
+        MC = packRaw AC
+
+    to-morphism : IsMorphism {{AD = transferRawAction AC}} (iso ._⇔_.to)
+    to-morphism = unpackMorphismLaw {{AD = transferRawAction AC}} (⊗.to-morphism iso)
+
+    from-morphism : IsMorphism {{AC = transferRawAction AC}} (iso ._⇔_.from)
+    from-morphism = unpackMorphismLaw {{AC = transferRawAction AC}} (⊗.from-morphism iso)
+
+    isomorphism : IsIsomorphism {{AD = transferRawAction AC}} iso
+    isomorphism = to-morphism , from-morphism
+  
   transferIsAction :
       {raw : RawAction C}
     → IsAction C raw
@@ -137,12 +163,3 @@ module _ {C : Container c c'} {D : Container d d'} (iso : C ⇔ D) where
 
   transfer : Action C → Action D
   transfer = unpack F.∘ ⊗.transfer iso F.∘ pack
-
-  to-morphism : {{AC : RawAction C}} → IsMorphism {{AD = transferRawAction AC}} (iso ._⇔_.to)
-  to-morphism {{AC}} = unpackMorphismLaw {{AD = transferRawAction AC}} (⊗.to-morphism iso)
-
-  from-morphism : {{AC : RawAction C}} → IsMorphism {{AC = transferRawAction AC}}  (iso ._⇔_.from)
-  from-morphism {{AC}} = unpackMorphismLaw {{AC = transferRawAction AC}} (⊗.from-morphism iso)
-
-  isomorphism : {{AC : RawAction C}} → IsIsomorphism {{AD = transferRawAction AC}} iso
-  isomorphism = to-morphism , from-morphism
