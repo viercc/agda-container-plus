@@ -27,19 +27,23 @@ open import Container.Combinator.Tensor as T
 
 open import Container.Algebra.TensorMonoid
 
+private
+  variable
+    c c' d d' : Level
+
 record IsMorphism
-  {c c' d d'} {C : Container c c'} {D : Container d d'}
-  {{MC : Monoid C}} {{MD : Monoid D}} (α : C ⇒ D)
+  {C : Container c c'} {D : Container d d'}
+  {{MC : RawMonoid C}} {{MD : RawMonoid D}} (α : C ⇒ D)
     : Set (c ⊔ c' ⊔ d ⊔ d') where
 
-  open Monoid {{...}}
+  open RawMonoid {{...}}
 
   field
     preserve-unit : α ∘ unit ≈ unit
     preserve-mult : α ∘ mult ≈ mult ∘ map₁ α ∘ map₂ α
 
-module _ {c c' d d'} {C : Container c c'} {D : Container d d'} {{MC : Monoid C}} {{MD : Monoid D}} where
-  open Monoid {{...}}
+module _ {C : Container c c'} {D : Container d d'} {{MC : RawMonoid C}} {{MD : RawMonoid D}} where
+  open RawMonoid {{...}}
   open import Container.Combinator.Tensor.Properties
 
   IsIsomorphism : (C ⇔ D) → Set _
@@ -82,7 +86,7 @@ module _ {c c' d d'} {C : Container c c'} {D : Container d d'} {{MC : Monoid C}}
         ∎
         where open Reasoning (≈-setoid {C₁ = D ⊗ D} {C₂ = C})
 
-module _ {c c' d d'} {C : Container c c'} {D : Container d d'} (iso : C ⇔ D) where
+module _ {C : Container c c'} {D : Container d d'} (iso : C ⇔ D) where
   open _⇔_ iso renaming (to to f; from to g; to-from to fg-id; from-to to gf-id)
 
   open import Container.Combinator.Tensor.Properties
@@ -182,21 +186,21 @@ module _ {c c' d d'} {C : Container c c'} {D : Container d d'} (iso : C ⇔ D) w
         ∎
         where open Reasoning ≈-setoid
 
-  module transfer (MC : Monoid C) where
-    open Monoid {{...}}
+  transfer : Monoid C → Monoid D
+  transfer MC =
+    record {
+      rawMonoid = transferRawMonoid rawMonoid;
+      isMonoid = transferIsMonoid isMonoid
+    }
+    where open Monoid MC
 
-    instance
-      _ : Monoid C
-      _ = MC
-
-      transferMonoid : Monoid D
-      transferMonoid = record { isMonoid = law' }
-        where
-          raw' : RawMonoid D
-          raw' = transferRawMonoid rawMonoid
-
-          law' : IsMonoid D raw'
-          law' = transferIsMonoid isMonoid
+  module _ {{MC : RawMonoid C}} where
+    private
+      instance
+        MD : RawMonoid D
+        MD = transferRawMonoid MC
+    
+    open RawMonoid {{...}}
 
     to-morphism : IsMorphism f
     to-morphism = record {
@@ -214,7 +218,7 @@ module _ {c c' d d'} {C : Container c c'} {D : Container d d'} (iso : C ⇔ D) w
           ∎
       }
       where open Reasoning ≈-setoid
-    
+      
     from-morphism : IsMorphism g
     from-morphism = record {
         preserve-unit = ∘-cong₁ gf-id unit;
@@ -224,4 +228,3 @@ module _ {c c' d d'} {C : Container c c'} {D : Container d d'} (iso : C ⇔ D) w
     isomorphism : IsIsomorphism iso
     isomorphism = to-morphism , from-morphism
   
-  open transfer using (transferMonoid) public

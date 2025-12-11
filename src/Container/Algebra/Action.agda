@@ -15,7 +15,6 @@ open import Relation.Binary.PropositionalEquality as ≡
 
 open import Data.Container.Core
 open import Container.Morphism.Equality
-open import Container.Morphism.Iso
 
 open import Algebra using
   (Op₂; RawMonoid; IsMagma; IsSemigroup; IsMonoid; Monoid)
@@ -255,7 +254,7 @@ module Action-properties {Con : Container s p} (action : Action Con) where
       eq3' : (x' · (x · y)) · (z · z') ≡ ((x' · x) · y) · (z · z')
       eq3' = ≡.cong₂ _·_ (≡.sym eq3) ≡.refl
 
-module _ {s p} (Con : Container s p) where
+module _ {s p} {Con : Container s p} where
   open Container Con renaming (Shape to S; Position to P)
   import Data.Container.Morphism as CM
   open import Container.Combinator.Tensor
@@ -382,27 +381,10 @@ module _ {s p} (Con : Container s p) where
     unpackLaw : IsAction Con rawAction
     unpackLaw = record {lawImpl}
 
-module _ {C D : Container s p} (actionC : Action C) (actionD : Action D) where
-  private
-    module AC = Action actionC 
-    module AD = Action actionD
-  
-  open Container C renaming (Shape to C₀; Position to C₁)
-  open Container D renaming (Shape to D₀; Position to D₁)
-  open RawAction {{...}}
-
-  record IsActionMorphism (α : C ⇒ D) : Set (s ⊔ p) where
-    open _⇒_ α renaming (shape to f; position to f#)
-
-    field
-      -- f is monoid homomorphism
-      f-ε : f ε ≡ ε
-      f-· : ∀ (x y : C₀) → f (x · y) ≡ f x · f y
-
-      -- preservation of ϕleft,ϕright
-      f#-ϕleft : ∀ (x y : C₀) (p : D₁ (f (x · y)))
-        → ϕleft (f# p) ≡ f# (ϕleft (≡.subst D₁ (f-· x y) p))
-      
-      f#-ϕright : ∀ (x y : C₀) (p : D₁ (f (x · y)))
-        → ϕright (f# p) ≡ f# (ϕright (≡.subst D₁ (f-· x y) p))
-  
+  module _ (MC : ⊗.Monoid Con) where
+    open ⊗.Monoid MC
+    unpack : Action Con
+    unpack = record {
+        rawAction = unpackRaw rawMonoid;
+        isAction = unpackLaw isMonoid
+      } 
