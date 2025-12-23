@@ -79,71 +79,103 @@ module defs where
 open defs
 
 module Fin-lemmata where
-  Invʳ→¬¬Invˡ : ∀ {n : ℕ} (f g : Fin (ℕ.suc n) → Fin (ℕ.suc n))
-    → Invʳ f g → ¬ (¬ Invˡ f g)
-  Invʳ→¬¬Invˡ {n} f g fg-id ¬gf-id = NatProp.≤⇒≯ bad (NatProp.n<1+n n)
-    where
-      -- suppose x₀ be the one which fails
-      --   Invˡ f g = (∀ x → g (f x) ≡ x)
-      counterExample : ∃ λ x → g (f x) ≢ x
-      counterExample =
-        FinProp.¬∀⟶∃¬ _ _ (λ x → g (f x) ≟ x) ¬gf-id
-      
-      x₀ : Fin (ℕ.suc n)
-      x₀ = proj₁ counterExample
-      
-      -- x₀ is not in the image of g
-      x₀∉Img : ∀ y → x₀ ≢ g y
-      x₀∉Img y x₀≡gy = proj₂ counterExample absurd
-        where
-          open ≡.≡-Reasoning
-          absurd : g (f x₀) ≡ x₀
-          absurd =
-            begin
-              g (f x₀)
-            ≡⟨ ≡.cong (g F.∘ f) x₀≡gy ⟩
-              g (f (g y))
-            ≡⟨ ≡.cong g (fg-id y) ⟩
-              g y
-            ≡⟨ x₀≡gy ⟨
-              x₀
-            ∎
-      
-      -- let g′ be the new function made by punching out x₀
-      -- from the codomain of g
-      g′ : Fin (ℕ.suc n) → Fin n
-      g′ y = punchOut (x₀∉Img y)
+  -- EITHER (P x) holds for all (x : A) OR
+  -- there's a counterexample x₀ such that ¬ P x₀.
+  data AllOrCounter {a b} {A : Set a} (P : A → Set b) : Set (a ⊔ b) where
+    all-yes : (∀ x → P x) → AllOrCounter P
+    counter : (∃ λ x → ¬ P x) → AllOrCounter P
+  
+  -- AllOrCounter is stronger than Dec (∀ P)
+  AllOrCounter→DecAll : ∀ {a b} {A : Set a} {P : A → Set b}
+    → AllOrCounter P → Dec (∀ x → P x)
+  AllOrCounter→DecAll (all-yes allP) = yes allP
+  AllOrCounter→DecAll (counter (x , ¬Px)) = no (λ allP → ¬Px (allP x))
 
-      -- g′ can be shown to be injective
-      inj-g′ : F.Injective _≡_ _≡_ g′
-      inj-g′ {x₁} {x₂} g′x₁≡g′x₂ = Invʳ→Injective f g fg-id gx₁≡gx₂
-        where
-          open ≡.≡-Reasoning
+  cons-all-or-counter : ∀ {b} {n : ℕ} {P : Fin (ℕ.suc n) → Set b}
+    → P zero → AllOrCounter (P F.∘ suc) → AllOrCounter P
+  cons-all-or-counter P0 (all-yes Pn) = all-yes (FinProp.∀-cons P0 Pn)
+  cons-all-or-counter _  (counter (x , disproof)) = counter (suc x , disproof)
 
-          gx₁≡gx₂ : g x₁ ≡ g x₂
-          gx₁≡gx₂ =
-            begin
-              g x₁
-            ≡⟨ FinProp.punchIn-punchOut (x₀∉Img x₁) ⟨
-              punchIn x₀ (g′ x₁)
-            ≡⟨ ≡.cong (punchIn x₀) g′x₁≡g′x₂ ⟩
-              punchIn x₀ (g′ x₂)
-            ≡⟨ FinProp.punchIn-punchOut (x₀∉Img x₂) ⟩
-              g x₂
-            ∎
-      
-      -- ... which means n + 1 ≤ n, contradiction.
-      bad : ℕ.suc n ℕ.≤ n
-      bad = FinProp.injective⇒≤ {f = g′} inj-g′
+  all-or-counter? : ∀ {b} {n : ℕ} {P : Fin n → Set b}
+    → (∀ x → Dec (P x)) → AllOrCounter P
+  all-or-counter? {_} {ℕ.zero}   _  = all-yes (λ ())
+  all-or-counter? {_} {ℕ.suc n′} P? with P? zero
+  ... | yes P0 = cons-all-or-counter P0 (all-or-counter? (P? F.∘ suc))
+  ... | no ¬P0 = counter (zero , ¬P0)
 
-  -- If a function f from finite set Fin n to itself
-  -- has a right inverse g, then g also is the left inverse of f.
+  private
+    Invʳ→noCounterExample : ∀ {n : ℕ} (f g : Fin n → Fin n)
+      → Invʳ f g → ¬ (∃ λ x → g (f x) ≢ x)
+    Invʳ→noCounterExample {ℕ.zero}  _ _ _ = λ ()
+    Invʳ→noCounterExample {ℕ.suc n} f g fg-id (x₀ , gfx₀≢x₀)
+        = NatProp.≤⇒≯ bad (NatProp.n<1+n n)
+      where
+        -- Given a counterexample x₀ to
+        --  ∀ x → g (f x) ≡ x,
+        -- prove a contradiction.
+
+        -- x₀ is not in the image of g
+        x₀∉Img : ∀ y → x₀ ≢ g y
+        x₀∉Img y x₀≡gy = gfx₀≢x₀ wrong
+          where
+            open ≡.≡-Reasoning
+            wrong : g (f x₀) ≡ x₀
+            wrong =
+              begin
+                g (f x₀)
+              ≡⟨ ≡.cong (g F.∘ f) x₀≡gy ⟩
+                g (f (g y))
+              ≡⟨ ≡.cong g (fg-id y) ⟩
+                g y
+              ≡⟨ x₀≡gy ⟨
+                x₀
+              ∎
+        
+        -- let g′ be the new function made by punching out x₀
+        -- from the codomain of g
+        g′ : Fin (ℕ.suc n) → Fin n
+        g′ y = punchOut (x₀∉Img y)
+
+        -- Equality through g′ → equality through g
+        g′≡→g≡ : ∀ {x₁ x₂} → g′ x₁ ≡ g′ x₂ → g x₁ ≡ g x₂
+        g′≡→g≡ {x₁} {x₂} g′x₁≡g′x₂ =
+          begin
+            g x₁
+          ≡⟨ FinProp.punchIn-punchOut (x₀∉Img x₁) ⟨
+            punchIn x₀ (g′ x₁)
+          ≡⟨ ≡.cong (punchIn x₀) g′x₁≡g′x₂ ⟩
+            punchIn x₀ (g′ x₂)
+          ≡⟨ FinProp.punchIn-punchOut (x₀∉Img x₂) ⟩
+            g x₂
+          ∎
+          where
+            open ≡.≡-Reasoning
+
+        -- g′ inherits injectivity from g
+        inj-g′ : F.Injective _≡_ _≡_ g′
+        inj-g′ = Invʳ→Injective f g fg-id F.∘ g′≡→g≡
+        
+        -- ... which means n + 1 ≤ n, contradiction.
+        bad : ℕ.suc n ℕ.≤ n
+        bad = FinProp.injective⇒≤ {f = g′} inj-g′
+
+  -- If an endo-function `f : Fin n → Fin n`
+  -- has a right inverse `g`, then `g` also is the left inverse of `f`.
   Invʳ→Invˡ : ∀ {n : ℕ} (f g : Fin n → Fin n)
     → Invʳ f g → Invˡ f g
-  Invʳ→Invˡ {n = ℕ.zero} _ _ _ = λ ()
-  Invʳ→Invˡ {n = ℕ.suc n} f g fg-id =
-    witnessed-¬¬ (FinProp.all? λ x → g (f x) ≟ x) (Invʳ→¬¬Invˡ f g fg-id)
+  Invʳ→Invˡ f g fg-id with all-or-counter? (λ x → g (f x) ≟ x)
+  ... | all-yes gf-id = gf-id
+  ... | counter counterExample = contradiction counterExample (Invʳ→noCounterExample f g fg-id)
 
+  -- Therefore, such pair `(f , g)` is inverses.
+  Invʳ→Invᵇ : ∀ {n : ℕ} (f g : Fin n → Fin n)
+    → Invʳ f g → Invᵇ f g
+  Invʳ→Invᵇ f g fg-id = fg-id , Invʳ→Invˡ f g fg-id
+
+  -- The proof is self-dual
+  Invˡ→Invᵇ : ∀ {n : ℕ} (f g : Fin n → Fin n)
+    → Invˡ f g → Invᵇ f g
+  Invˡ→Invᵇ f g gf-id = Invʳ→Invˡ g f gf-id , gf-id
 
 -- Given a Monomial monad on finite set I,
 -- this monad necessarily satisfy LeftIso.
@@ -555,12 +587,10 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
       ∎
       where open ≡.≡-Reasoning
 
-    ql-g-id : Invˡ g (ql ε v)
-    ql-g-id = Fin-lemmata.Invʳ→Invˡ g (ql ε v) g-ql-id
-
     -- g is the inverse of (ql ε v)
     ql-inv-correct : F.Inverseᵇ _≡_ _≡_ (ql ε v) g
-    ql-inv-correct = Inv-to-Inverse (ql-g-id , g-ql-id)
+    ql-inv-correct =
+      Inv-to-Inverse (Fin-lemmata.Invˡ→Invᵇ (ql ε v) g g-ql-id)
 
   leftIso : LeftIso raw
   leftIso = record {
