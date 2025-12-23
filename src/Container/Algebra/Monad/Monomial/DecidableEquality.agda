@@ -109,21 +109,6 @@ module DecEq-lemmata where
   ... | yes i≡j = rewriter-x i≡j
   ... | no i≢j = rewriter-y i≢j
 
-  ==-sym : ∀ {i j : I} → (i == j) ≡ (j == i)
-  ==-sym {i} {j} with i ≟ j | j ≟ i
-  ... | yes _ | yes _ = ≡.refl
-  ... | yes eq | no neq = ⊥-elim (neq (≡.sym eq))
-  ... | no neq | yes eq = ⊥-elim (neq (≡.sym eq))
-  ... | no _ | no _ = ≡.refl
-
-  rotate-eq : ∀ (i j k : I)
-    → (i == k) ∧ (j == k) ≡ (i == j) ∧ (i == k)
-  rotate-eq i j k with i ≟ k | j ≟ k | i ≟ j
-  ... | no _ | _ | _ = ≡.sym (BoolProp.∧-zeroʳ _)
-  ... | yes _ | yes _ | yes _ = ≡.refl
-  ... | yes ≡.refl | yes ≡.refl | no i≢j = ⊥-elim (i≢j ≡.refl)
-  ... | yes ≡.refl | no j≢k | yes ≡.refl = ⊥-elim (j≢k ≡.refl)
-  ... | yes _ | no _ | no _ = ≡.refl
 open DecEq-lemmata
 
 -- Preliminary definitions and properties
