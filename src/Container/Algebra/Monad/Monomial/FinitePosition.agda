@@ -37,11 +37,6 @@ private
   _⨾_ : ∀ {a} {A : Set a} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
   _⨾_ = ≡.trans
 
-  witnessed-¬¬ : ∀ {a} {A : Set a}
-    → Dec A → ¬ (¬ A) → A
-  witnessed-¬¬ (yes witness) _ = witness
-  witnessed-¬¬ (no ¬A) ¬¬A = ⊥-elim (¬¬A ¬A)
-
 -- Facts about finite sets
 module defs where
   private
@@ -80,34 +75,43 @@ open defs
 
 module Fin-lemmata where
   -- EITHER (P x) holds for all (x : A) OR
-  -- there's a counterexample x₀ such that ¬ P x₀.
-  data AllOrCounter {a b} {A : Set a} (P : A → Set b) : Set (a ⊔ b) where
-    all-yes : (∀ x → P x) → AllOrCounter P
-    counter : (∃ λ x → ¬ P x) → AllOrCounter P
+  -- there'αᵣ a counterexample x₀ such that ¬ P x₀.
+  data Searched {a b} {A : Set a} (P : A → Set b) : Set (a ⊔ b) where
+    all-yes : (∀ x → P x) → Searched P
+    counter : (∃ λ x → ¬ P x) → Searched P
   
-  -- AllOrCounter is stronger than Dec (∀ P)
-  AllOrCounter→DecAll : ∀ {a b} {A : Set a} {P : A → Set b}
-    → AllOrCounter P → Dec (∀ x → P x)
-  AllOrCounter→DecAll (all-yes allP) = yes allP
-  AllOrCounter→DecAll (counter (x , ¬Px)) = no (λ allP → ¬Px (allP x))
+  -- Searched is stronger than Dec (∀ P)
+  Searched→Dec∀ : ∀ {a b} {A : Set a} {P : A → Set b}
+    → Searched P → Dec (∀ x → P x)
+  Searched→Dec∀ (all-yes allP) = yes allP
+  Searched→Dec∀ (counter (x , ¬Px)) = no (λ allP → ¬Px (allP x))
 
-  cons-all-or-counter : ∀ {b} {n : ℕ} {P : Fin (ℕ.suc n) → Set b}
-    → P zero → AllOrCounter (P F.∘ suc) → AllOrCounter P
-  cons-all-or-counter P0 (all-yes Pn) = all-yes (FinProp.∀-cons P0 Pn)
-  cons-all-or-counter _  (counter (x , disproof)) = counter (suc x , disproof)
+  -- Searched is stronger than Dec (∃ ¬P)
+  Searched→Dec¬P : ∀ {a b} {A : Set a} {P : A → Set b}
+    → Searched P → Dec (∃ λ x → ¬ P x)
+  Searched→Dec¬P (all-yes allP) = no (λ (x , ¬Px) → ¬Px (allP x))
+  Searched→Dec¬P (counter counterexample) = yes counterexample
 
-  all-or-counter? : ∀ {b} {n : ℕ} {P : Fin n → Set b}
-    → (∀ x → Dec (P x)) → AllOrCounter P
-  all-or-counter? {_} {ℕ.zero}   _  = all-yes (λ ())
-  all-or-counter? {_} {ℕ.suc n′} P? with P? zero
-  ... | yes P0 = cons-all-or-counter P0 (all-or-counter? (P? F.∘ suc))
+  cons-search : ∀ {b} {n : ℕ} {P : Fin (ℕ.suc n) → Set b}
+    → P zero → Searched (P F.∘ suc) → Searched P
+  cons-search P0 (all-yes Pn) = all-yes (FinProp.∀-cons P0 Pn)
+  cons-search _  (counter (x , disproof)) = counter (suc x , disproof)
+
+  -- Finite sets can be searched with decidable predicate.
+  search? : ∀ {b} {n : ℕ} {P : Fin n → Set b}
+    → (∀ x → Dec (P x)) → Searched P
+  search? {_} {ℕ.zero}   _  = all-yes (λ ())
+  search? {_} {ℕ.suc n′} P? with P? zero
+  ... | yes P0 = cons-search P0 (search? (P? F.∘ suc))
   ... | no ¬P0 = counter (zero , ¬P0)
 
   private
-    Invʳ→noCounterExample : ∀ {n : ℕ} (f g : Fin n → Fin n)
+    -- To prove Invʳ→Invˡ, first prove a slightly weaker
+    -- Invʳ → "there must not exist a counterexample to Invˡ"
+    Invʳ→noCounterexample : ∀ {n : ℕ} (f g : Fin n → Fin n)
       → Invʳ f g → ¬ (∃ λ x → g (f x) ≢ x)
-    Invʳ→noCounterExample {ℕ.zero}  _ _ _ = λ ()
-    Invʳ→noCounterExample {ℕ.suc n} f g fg-id (x₀ , gfx₀≢x₀)
+    Invʳ→noCounterexample {ℕ.zero}  _ _ _ = λ ()
+    Invʳ→noCounterexample {ℕ.suc n} f g fg-id (x₀ , gfx₀≢x₀)
         = NatProp.≤⇒≯ bad (NatProp.n<1+n n)
       where
         -- Given a counterexample x₀ to
@@ -163,16 +167,16 @@ module Fin-lemmata where
   -- has a right inverse `g`, then `g` also is the left inverse of `f`.
   Invʳ→Invˡ : ∀ {n : ℕ} (f g : Fin n → Fin n)
     → Invʳ f g → Invˡ f g
-  Invʳ→Invˡ f g fg-id with all-or-counter? (λ x → g (f x) ≟ x)
+  Invʳ→Invˡ f g fg-id with search? (λ x → g (f x) ≟ x)
   ... | all-yes gf-id = gf-id
-  ... | counter counterExample = contradiction counterExample (Invʳ→noCounterExample f g fg-id)
+  ... | counter cex = contradiction cex (Invʳ→noCounterexample f g fg-id)
 
-  -- Therefore, such pair `(f , g)` is inverses.
+  -- Therefore, such `(f , g)` are inverses.
   Invʳ→Invᵇ : ∀ {n : ℕ} (f g : Fin n → Fin n)
     → Invʳ f g → Invᵇ f g
   Invʳ→Invᵇ f g fg-id = fg-id , Invʳ→Invˡ f g fg-id
 
-  -- The proof is self-dual
+  -- The proof is self-dual.
   Invˡ→Invᵇ : ∀ {n : ℕ} (f g : Fin n → Fin n)
     → Invˡ f g → Invᵇ f g
   Invˡ→Invᵇ f g gf-id = Invʳ→Invˡ g f gf-id , gf-id
@@ -197,26 +201,25 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
   open DecEq-lemmata
     
   -- single-position case:
-  --   `ql ε (α i mᵢ) : I → I`
-  --      (which we well call `r` for short)
-  -- has an inverse function of it (i.e. is a permutation.)
+  --   `α = ql ε (at i mᵢ) : I → I`
+  -- has its inverse `α⁻¹`.
   module single-position (i : I) (m : M) where
     mᵢ : M
-    mᵢ = m at i
+    mᵢ = proj i m
 
-    r s r̃ s̃ : I → I
-    r = ql ε (α i mᵢ)
-    s = qr ε (α i mᵢ)
-    r̃ = ql ε (β i mᵢ)
-    s̃ = qr ε (β i mᵢ)
+    α αᵣ β βᵣ : I → I
+    α = ql ε (at i mᵢ)
+    αᵣ = qr ε (at i mᵢ)
+    β = ql ε (but i mᵢ)
+    βᵣ = qr ε (but i mᵢ)
     
-    r̃≗id : r̃ ≗ F.id
-    r̃≗id j =
+    β≗id : β ≗ F.id
+    β≗id j =
       begin
-        ql ε (β i mᵢ) j
-      ≡⟨ ql-ε-at (β i mᵢ) j ⟨
-        ql ε ((ε • β i mᵢ) at_) j
-      ≡⟨ ql-cong₂ (λ k → ≡.cong (_at k) (ε•β-at m i) ⨾ at-ε k) j ⟩
+        ql ε (but i mᵢ) j
+      ≡⟨ ql-ε-proj j (but i mᵢ) ⟨
+        ql ε (λ k → proj k (ε • but i mᵢ)) j
+      ≡⟨ ql-cong₂ (λ k → ≡.cong (proj k) (ε•but-proj m i) ⨾ proj-ε k) j ⟩
         ql ε (λ k → ε) j
       ≡⟨ ql-inner-ε ε j ⟩
         j
@@ -224,16 +227,16 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
       where open ≡.≡-Reasoning
     
     w₁ : I → I → M
-    w₁ j = if i == j then e₁ else α i mᵢ
+    w₁ j = if i == j then e₁ else at i mᵢ
 
     Δw₁≗e₁ : Δ w₁ ≗ e₁
     Δw₁≗e₁ j =
       begin
         Δ w₁ j
       ≡⟨⟩
-        (if i == j then e₁ else α i mᵢ) j
+        (if i == j then e₁ else at i mᵢ) j
       ≡⟨ case-apply₁ (i == j) _ _ ⟩
-        (if i == j then ε else α i mᵢ j)
+        (if i == j then ε else at i mᵢ j)
       ≡⟨ if-else-if (i == j) ⟩
         (if i == j then ε else ε)
       ≡⟨ if-dud ⟩
@@ -241,36 +244,36 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
       ∎
       where open ≡.≡-Reasoning
 
-    dw₁≗βmᵢ : d w₁ ≗ β i mᵢ
-    dw₁≗βmᵢ j =
+    dw₁≗but : d w₁ ≗ but i mᵢ
+    dw₁≗but j =
       begin
         d w₁ j
       ≡⟨⟩
-        (ε • (if i == j then e₁ else α i mᵢ))
+        (ε • (if i == j then e₁ else at i mᵢ))
       ≡⟨ case-apply₂ (i == j) (ε •_) ⟩
-        (if i == j then ε • e₁ else ε • α i mᵢ)
-      ≡⟨ ≡.cong₂ (if i == j then_else_) ε-ε (at-at-≡ m i) ⟩
+        (if i == j then ε • e₁ else ε • at i mᵢ)
+      ≡⟨ ≡.cong₂ (if i == j then_else_) ε-ε (proj-proj-≡ i m) ⟩
         (if i == j then ε else mᵢ)
       ≡⟨⟩
-        β i mᵢ j
+        but i mᵢ j
       ∎
       where open ≡.≡-Reasoning
 
     ql-dw₁≗id : ql ε (d w₁) ≗ F.id
-    ql-dw₁≗id j = ql-cong₂ dw₁≗βmᵢ j ⨾ r̃≗id j
+    ql-dw₁≗id j = ql-cong₂ dw₁≗but j ⨾ β≗id j
 
-    qr-dw₁≗s̃ : qr ε (d w₁) ≗ s̃
-    qr-dw₁≗s̃ = qr-cong₂ dw₁≗βmᵢ 
+    qr-dw₁≗βᵣ : qr ε (d w₁) ≗ βᵣ
+    qr-dw₁≗βᵣ = qr-cong₂ dw₁≗but
 
-    rs̃-id-i≢j : ∀ j → i ≢ j → r (s̃ j) ≡ j
-    rs̃-id-i≢j j i≢j = ≡.sym eq
+    αβᵣ-id-i≢j : ∀ j → i ≢ j → α (βᵣ j) ≡ j
+    αβᵣ-id-i≢j j i≢j = ≡.sym eq
       where
         open ≡.≡-Reasoning
 
-        w₁j≡αmᵢ : w₁ j ≡ α i mᵢ
-        w₁j≡αmᵢ = ≡.cong (if_then e₁ else α i mᵢ) (dec-neq i≢j)
+        w₁j≡at : w₁ j ≡ at i mᵢ
+        w₁j≡at = ≡.cong (if_then e₁ else at i mᵢ) (dec-neq i≢j)
 
-        eq : j ≡ r (s̃ j)
+        eq : j ≡ α (βᵣ j)
         eq = begin
             j
           ≡⟨ ql-inner-ε ε j ⟨
@@ -279,124 +282,117 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
             ql ε (Δ w₁) j
           ≡⟨ qr-ql-ee w₁ j ⟩
             ql ε (w₁ (ql ε (d w₁) j)) (qr ε (d w₁) j)
-          ≡⟨ ≡.cong₂ (λ j' k' → ql ε (w₁ j') k') (ql-dw₁≗id j) (qr-dw₁≗s̃ j) ⟩
-            ql ε (w₁ j) (s̃ j)
-          ≡⟨ ≡.cong (λ v → ql ε v (s̃ j)) w₁j≡αmᵢ ⟩
-            ql ε (α i mᵢ) (s̃ j)
+          ≡⟨ ≡.cong₂ (λ j' k' → ql ε (w₁ j') k') (ql-dw₁≗id j) (qr-dw₁≗βᵣ j) ⟩
+            ql ε (w₁ j) (βᵣ j)
+          ≡⟨ ≡.cong (λ v → ql ε v (βᵣ j)) w₁j≡at ⟩
+            ql ε (at i mᵢ) (βᵣ j)
           ≡⟨⟩
-            r (s̃ j)
+            α (βᵣ j)
           ∎
 
-    -- There is a preimage r⁻¹(i) or there isn't any.
-    r⁻¹-i-or-not : Dec (∃ λ k → r k ≡ i)
-    r⁻¹-i-or-not = FinProp.any? (λ k → r k ≟ i)
+    -- There is a preimage α⁻¹(i) or there isn't any.
+    α⁻¹i-or-not : Dec (∃ λ k → α k ≡ i)
+    α⁻¹i-or-not = FinProp.any? (λ k → α k ≟ i)
 
-    -- When it exists, we can construct the inverse of r.
-    module exist-case (proof : ∃ λ k → r k ≡ i) where
+    -- When it exists, we can construct the inverse of α.
+    module exist-case (proof : ∃ λ k → α k ≡ i) where
       k₀ : I
       k₀ = proj₁ proof
 
-      rk₀≡i : r k₀ ≡ i
-      rk₀≡i = proj₂ proof
+      αk₀≡i : α k₀ ≡ i
+      αk₀≡i = proj₂ proof
 
-      s′ : I → I
-      s′ j = if i == j then k₀ else s̃ j
+      α⁻¹ : I → I
+      α⁻¹ j = if i == j then k₀ else βᵣ j
 
-      Invʳ-s′ : Invʳ r s′
-      Invʳ-s′ j = begin
-          r (s′ j)
+      Invʳ-α : Invʳ α α⁻¹
+      Invʳ-α j = begin
+          α (α⁻¹ j)
         ≡⟨⟩
-          r (if i == j then k₀ else s̃ j)
-        ≡⟨ case-apply₂ (i == j) r ⟩
-          (if (i == j) then r k₀ else r (s̃ j))
+          α (if i == j then k₀ else βᵣ j)
+        ≡⟨ case-apply₂ (i == j) α ⟩
+          (if (i == j) then α k₀ else α (βᵣ j))
         ≡⟨ rewrite-under-if-else i j
-              (λ i≡j → rk₀≡i ⨾ i≡j)
-              (λ i≢j → rs̃-id-i≢j j i≢j) ⟩
-          (if (i == j) then j else j)
+              (λ i≡j → αk₀≡i ⨾ i≡j)
+              (λ i≢j → αβᵣ-id-i≢j j i≢j) ⟩
+          (if i == j then j else j)
         ≡⟨ if-dud ⟩
           j
         ∎ 
         where open ≡.≡-Reasoning
       
-      Invˡ-s′ : Invˡ r s′
-      Invˡ-s′ = Fin-lemmata.Invʳ→Invˡ r s′ Invʳ-s′
-
-      there-is-inverse : ∃ λ r⁻¹ → Invᵇ r r⁻¹
-      there-is-inverse = s′ , (Invʳ-s′ , Invˡ-s′)
+      there-is-α⁻¹ : ∃ λ γ → Invᵇ α γ
+      there-is-α⁻¹ = α⁻¹ , (Fin-lemmata.Invʳ→Invᵇ α α⁻¹ Invʳ-α)
     
     -- Assuming non-existence leads contradicion.
-    module not-exist-case (disproof : ¬ (∃ λ k → r k ≡ i)) where
-      i≢rk : ∀ k → i ≢ r k
-      i≢rk k hyp = disproof (k , ≡.sym hyp)
+    module not-exist-case (disproof : ¬ (∃ λ k → α k ≡ i)) where
+      i≢αk : ∀ k → i ≢ α k
+      i≢αk k hyp = disproof (k , ≡.sym hyp)
 
       w₂ : I → I → M
-      w₂ j = if i == j then α i mᵢ else e₁
+      w₂ j = if i == j then at i mᵢ else e₁
 
-      Δw₂≗αmᵢ : Δ w₂ ≗ α i mᵢ
-      Δw₂≗αmᵢ j =
+      Δw₂≗at : Δ w₂ ≗ at i mᵢ
+      Δw₂≗at j =
         begin
           Δ w₂ j
         ≡⟨ case-apply₁ (i == j) _ _ ⟩
-          (if i == j then α i mᵢ j else ε)
+          (if i == j then at i mᵢ j else ε)
         ≡⟨ if-then-if (i == j) ⟩
           (if i == j then mᵢ else ε)
         ≡⟨⟩
-          α i mᵢ j
+          at i mᵢ j
         ∎
         where open ≡.≡-Reasoning
       
-      dw₂≗αmᵢ : d w₂ ≗ α i mᵢ
-      dw₂≗αmᵢ j =
+      dw₂≗at : d w₂ ≗ at i mᵢ
+      dw₂≗at j =
         begin
           d w₂ j
         ≡⟨⟩
-          ε • (if i == j then α i mᵢ else e₁)
+          ε • (if i == j then at i mᵢ else e₁)
         ≡⟨ case-apply₂ (i == j) (ε •_) ⟩
-          (if i == j then ε • α i mᵢ else ε • e₁)
-        ≡⟨ ≡.cong₂ (if i == j then_else_) (at-at-≡ m i) ε-ε ⟩
+          (if i == j then ε • at i mᵢ else ε • e₁)
+        ≡⟨ ≡.cong₂ (if i == j then_else_) (proj-proj-≡ i m) ε-ε ⟩
           (if i == j then mᵢ else ε)
         ≡⟨⟩
-          α i mᵢ j
+          at i mᵢ j
         ∎
         where open ≡.≡-Reasoning
 
-      ql-dw₂≗r : ql ε (d w₂) ≗ r
-      ql-dw₂≗r = ql-cong₂ dw₂≗αmᵢ
+      w₂αj≡e₁ : ∀ j → w₂ (α j) ≡ e₁
+      w₂αj≡e₁ j = ≡.cong (if_then _ else e₁) (dec-neq (i≢αk j))
 
-      qr-dw₂≗s : qr ε (d w₂) ≗ s
-      qr-dw₂≗s = qr-cong₂ dw₂≗αmᵢ
-
-      w₂-rj≡e₁ : ∀ j → w₂ (r j) ≡ e₁
-      w₂-rj≡e₁ j = ≡.cong (if_then _ else e₁) (dec-neq (i≢rk j))
-
-      r≗s : r ≗ s
-      r≗s j =
+      α≗αᵣ : α ≗ αᵣ
+      α≗αᵣ j =
         begin
-          r j
+          α j
         ≡⟨⟩
-          ql ε (α i mᵢ) j
-        ≡⟨ ql-cong₂ (λ k → Δw₂≗αmᵢ k) j ⟨
+          ql ε (at i mᵢ) j
+        ≡⟨ ql-cong₂ (λ k → Δw₂≗at k) j ⟨
           ql ε (Δ w₂) j
         ≡⟨ qr-ql-ee w₂ j ⟩
           ql ε (w₂ (ql ε (d w₂) j)) (qr ε (d w₂) j)
-        ≡⟨ ≡.cong₂ (λ j' k' → ql ε (w₂ j') k') (ql-dw₂≗r j) (qr-dw₂≗s j) ⟩
-          ql ε (w₂ (r j)) (s j)
-        ≡⟨ ≡.cong (λ v → ql ε v (s j)) (w₂-rj≡e₁ j) ⟩
-          ql ε e₁ (s j)
-        ≡⟨ ql-inner-ε ε (s j) ⟩
-          s j
+        ≡⟨ ≡.cong₂ (λ j' k' → ql ε (w₂ j') k')
+            (ql-cong₂ dw₂≗at j)
+            (qr-cong₂ dw₂≗at j) ⟩
+          ql ε (w₂ (α j)) (αᵣ j)
+        ≡⟨ ≡.cong (λ v → ql ε v (αᵣ j)) (w₂αj≡e₁ j) ⟩
+          ql ε e₁ (αᵣ j)
+        ≡⟨ ql-inner-ε ε (αᵣ j) ⟩
+          αᵣ j
         ∎
         where open ≡.≡-Reasoning
       
       w₃ : I → I → M
-      w₃ j = if i == j then α i mᵢ else β i mᵢ
+      w₃ j = if i == j then at i mᵢ else but i mᵢ
 
       Δw₃≗const-mᵢ : Δ w₃ ≗ F.const mᵢ
       Δw₃≗const-mᵢ j =
         begin
           Δ w₃ j
         ≡⟨ case-apply₁ (i == j) _ _ ⟩
-          (if i == j then α i mᵢ j else β i mᵢ j)
+          (if i == j then at i mᵢ j else but i mᵢ j)
         ≡⟨ rewrite-under-if-else i j
               (λ i≡j → ≡.cong (if_then mᵢ else ε) (dec-eq i≡j))
               (λ i≢j → ≡.cong (if_then ε else mᵢ) (dec-neq i≢j)) ⟩
@@ -406,27 +402,24 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
         ∎
         where open ≡.≡-Reasoning
       
-      dw₃≗αmᵢ : d w₃ ≗ α i mᵢ
-      dw₃≗αmᵢ j =
+      dw₃≗at : d w₃ ≗ at i mᵢ
+      dw₃≗at j =
         begin
           d w₃ j
         ≡⟨ case-apply₂ (i == j) (ε •_) ⟩
-          (if i == j then ε • α i mᵢ else ε • β i mᵢ)
-        ≡⟨ ≡.cong₂ (if i == j then_else_) (at-at-≡ m i) (ε•β-at m i) ⟩
+          (if i == j then ε • at i mᵢ else ε • but i mᵢ)
+        ≡⟨ ≡.cong₂ (if i == j then_else_) (proj-proj-≡ i m) (ε•but-proj m i) ⟩
           (if i == j then mᵢ else ε)
         ≡⟨⟩
-          α i mᵢ j
+          at i mᵢ j
         ∎
         where open ≡.≡-Reasoning
       
-      ql-dw₃≗r : ql ε (d w₃) ≗ r
-      ql-dw₃≗r = ql-cong₂ dw₃≗αmᵢ
-
-      qr-dw₃≗s : qr ε (d w₃) ≗ s
-      qr-dw₃≗s = qr-cong₂ dw₃≗αmᵢ
-
-      s̃-s-id : ∀ j → j ≡ s̃ (s j)
-      s̃-s-id j =
+      w₃αj≡but : ∀ {j} → w₃ (α j) ≡ but i mᵢ
+      w₃αj≡but {j} = ≡.cong (if_then _ else but i mᵢ) (dec-neq (i≢αk j))
+      
+      βᵣ-αᵣ-id : ∀ j → j ≡ βᵣ (αᵣ j)
+      βᵣ-αᵣ-id j =
         begin
           j
         ≡⟨ qr-outer-ε mᵢ j ⟨
@@ -435,154 +428,166 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
           qr ε (Δ w₃) j
         ≡⟨ qr-qr-ee w₃ j ⟩
           qr ε (w₃ (ql ε (d w₃) j)) (qr ε (d w₃) j)
-        ≡⟨ ≡.cong₂ (λ j' k' → qr ε (w₃ j') k') (ql-dw₃≗r j) (qr-dw₃≗s j) ⟩
-          qr ε (w₃ (r j)) (s j)
-        ≡⟨ ≡.cong (λ v → qr ε v (s j)) w₃rj≡βmᵢ ⟩
-          qr ε (β i mᵢ) (s j)
+        ≡⟨ ≡.cong₂ (λ j' k' → qr ε (w₃ j') k')
+           (ql-cong₂ dw₃≗at j)
+           (qr-cong₂ dw₃≗at j) ⟩
+          qr ε (w₃ (α j)) (αᵣ j)
+        ≡⟨ ≡.cong (λ v → qr ε v (αᵣ j)) w₃αj≡but ⟩
+          qr ε (but i mᵢ) (αᵣ j)
         ≡⟨⟩
-          s̃ (s j)
+          βᵣ (αᵣ j)
         ∎
         where
           open ≡.≡-Reasoning
-          w₃rj≡βmᵢ : w₃ (r j) ≡ β i mᵢ
-          w₃rj≡βmᵢ = ≡.cong (if_then _ else β i mᵢ) (dec-neq (i≢rk j))
 
-      -- s is a right inverse of s̃ 
-      Invʳ-s̃-s : Invʳ s̃ s
-      Invʳ-s̃-s j = ≡.sym (s̃-s-id j) 
+      -- αᵣ is a right inverse of βᵣ 
+      Invʳ-βᵣ-αᵣ : Invʳ βᵣ αᵣ
+      Invʳ-βᵣ-αᵣ j = ≡.sym (βᵣ-αᵣ-id j) 
 
-      -- ... which then implies s is the inverse of s̃
-      Invˡ-s̃-s : Invˡ s̃ s
-      Invˡ-s̃-s = Fin-lemmata.Invʳ→Invˡ s̃ s Invʳ-s̃-s
+      -- ... which then implies αᵣ is the inverse of βᵣ
+      Invˡ-βᵣ-αᵣ : Invˡ βᵣ αᵣ
+      Invˡ-βᵣ-αᵣ = Fin-lemmata.Invʳ→Invˡ βᵣ αᵣ Invʳ-βᵣ-αᵣ
 
-      -- ... which then implies r = s is surjective,
-      -- and in fact there's k s.t. i≡rk
-      i≡rs̃i : i ≡ r (s̃ i)
-      i≡rs̃i =
+      -- ... which then implies α = αᵣ is surjective,
+      -- and in fact there's (k := βᵣ i) s.t. i≡αk
+      i≡αβᵣi : i ≡ α (βᵣ i)
+      i≡αβᵣi =
         begin
           i
-        ≡⟨ Invˡ-s̃-s i ⟨
-          s (s̃ i)
-        ≡⟨ r≗s (s̃ i) ⟨
-          r (s̃ i)
+        ≡⟨ Invˡ-βᵣ-αᵣ i ⟨
+          αᵣ (βᵣ i)
+        ≡⟨ α≗αᵣ (βᵣ i) ⟨
+          α (βᵣ i)
         ∎
         where open ≡.≡-Reasoning
 
       -- ... which contradicts to the hypothesis.
       bad : ⊥
-      bad = i≢rk (s̃ i) i≡rs̃i
+      bad = i≢αk (βᵣ i) i≡αβᵣi
     
-    -- Therefore, the inverse of r always exists.
-    r-inverse : ∃ λ r⁻¹ → Invᵇ r r⁻¹
-    r-inverse with r⁻¹-i-or-not
-    ... | yes proof    = exist-case.there-is-inverse proof
+    -- Therefore, the inverse of α exists.
+    α-inverse : ∃ λ α⁻¹ → Invᵇ α α⁻¹
+    α-inverse with α⁻¹i-or-not
+    ... | yes proof    = exist-case.there-is-α⁻¹ proof
     ... | no  disproof = ⊥-elim (not-exist-case.bad disproof)
     
-  -- Use single-position case to show generic case
-  module ql-inv-construct (v : I → M) where
-    -- we're to show `ql ε v : I → I` has inverse.
-    m : M
-    m = ε • v
-
-    -- But its sufficient to show only for `h = ql ε (m at_)`.
+  -- Use single-position case to show generic case:
+  -- `ql ε v` has an inverse.
+  -- 
+  -- It is enough to show for (v := λ j → proj j m),
+  -- because `ql ε (λ j → proj j (ε • v)) ≗ ql ε v`.
+  module ql-m-inv (m : M) where
+    private
+      v : I → M
+      v j = proj j m
+  
+    -- `h` has the inverese `g` defined below.
     h : I → I
-    h = ql ε (m at_)
+    h = ql ε v
 
-    ql-v≗ql-mi : ql ε v ≗ h
-    ql-v≗ql-mi j = ≡.sym (ql-ε-at v j)
+    private
+      hᵣ : I → I
+      hᵣ = qr ε v
 
-    -- definitions
-    σ : I → I → I
-    σ i = ql ε (α i (m at i))
+      -- definitions
+      σ : I → I → I
+      σ i = ql ε (at i (v i))
 
-    σ-has-inv : ∀ i → ∃ λ f → Invᵇ (σ i) f
-    σ-has-inv i = single-position.r-inverse i m
+      σ-has-inv : ∀ i → ∃ λ f → Invᵇ (σ i) f
+      σ-has-inv i = single-position.α-inverse i m
 
-    σ⁻¹ : I → I → I
-    σ⁻¹ i = proj₁ (σ-has-inv i)
+      σ⁻¹ : I → I → I
+      σ⁻¹ i = proj₁ (σ-has-inv i)
 
-    σ-σ⁻¹ : ∀ i j → σ i (σ⁻¹ i j) ≡ j
-    σ-σ⁻¹ i = proj₁ (proj₂ (σ-has-inv i))
+      σ-σ⁻¹ : ∀ i j → σ i (σ⁻¹ i j) ≡ j
+      σ-σ⁻¹ i = proj₁ (proj₂ (σ-has-inv i))
 
-    σ⁻¹-σ : ∀ i j → σ⁻¹ i (σ i j) ≡ j
-    σ⁻¹-σ i = proj₂ (proj₂ (σ-has-inv i))
+      σ⁻¹-σ : ∀ i j → σ⁻¹ i (σ i j) ≡ j
+      σ⁻¹-σ i = proj₂ (proj₂ (σ-has-inv i))
     
     -- This g is the inverse of h
     g : I → I
-    g k = qr ε (α k m) (σ⁻¹ k k)
+    g k = qr ε (at k m) (σ⁻¹ k k)
   
-    w₄ : I → I → M
-    w₄ i = α i (m at i)
+    private
+      w₄ : I → I → M
+      w₄ i = at i (v i)
 
-    Δw₄≗mᵢ : Δ w₄ ≗ (m at_)
-    Δw₄≗mᵢ j = ≡.cong (if_then m at j else ε) (dec-refl {i = j})
+      Δw₄≗v : Δ w₄ ≗ v
+      Δw₄≗v j = ≡.cong (if_then v j else ε) (dec-refl {i = j})
 
-    dw₄≗mᵢ : d w₄ ≗ (m at_)
-    dw₄≗mᵢ j = at-at-≡ m j
+      dw₄≗v : d w₄ ≗ v
+      dw₄≗v j = proj-proj-≡ j m
 
-    h-as-σqr : ∀ j → h j ≡ σ (h j) (qr ε (m at_) j)
-    h-as-σqr j =
+      h-σhᵣ : ∀ j → h j ≡ σ (h j) (hᵣ j)
+      h-σhᵣ j =
+        begin
+          h j
+        ≡⟨ ql-cong₂ Δw₄≗v j ⟨
+          ql ε (Δ w₄) j
+        ≡⟨ qr-ql-ee w₄ j ⟩
+          ql ε (w₄ (ql ε (d w₄) j)) (qr ε (d w₄) j)
+        ≡⟨ ≡.cong₂ (λ j' k' → ql ε (w₄ j') k')
+            (ql-cong₂ dw₄≗v j)
+            (qr-cong₂ dw₄≗v j) ⟩
+          ql ε (w₄ (h j)) (hᵣ j)
+        ≡⟨⟩
+          σ (h j) (hᵣ j)
+        ∎
+        where open ≡.≡-Reasoning
+      
+      hᵣ-σ⁻¹h : ∀ j → hᵣ j ≡ σ⁻¹ (h j) (h j)
+      hᵣ-σ⁻¹h j =
+        begin
+          hᵣ j
+        ≡⟨ σ⁻¹-σ (h j) (hᵣ j) ⟨
+          σ⁻¹ (h j) (σ (h j) (hᵣ j))
+        ≡⟨ ≡.cong (σ⁻¹ (h j)) (h-σhᵣ j) ⟨
+          σ⁻¹ (h j) (h j)
+        ∎
+        where open ≡.≡-Reasoning
+      
+      w₅ : I → I → M
+      w₅ i = at i m
+
+      Δw₅≗const-m : Δ w₅ ≗ F.const m
+      Δw₅≗const-m j = ≡.cong (if_then _ else _) (dec-refl {i = j})
+
+      _ : d w₅ ≡ v
+      _ = ≡.refl
+
+    gh-id : ∀ j → g (h j) ≡ j
+    gh-id j =
       begin
-        h j
-      ≡⟨ ql-cong₂ Δw₄≗mᵢ j ⟨
-        ql ε (Δ w₄) j
-      ≡⟨ qr-ql-ee w₄ j ⟩
-        ql ε (w₄ (ql ε (d w₄) j)) (qr ε (d w₄) j)
-      ≡⟨ ≡.cong₂ (λ j' k' → ql ε (w₄ j') k')
-          (ql-cong₂ dw₄≗mᵢ j)
-          (qr-cong₂ dw₄≗mᵢ j) ⟩
-        ql ε (w₄ (h j)) (qr ε (m at_) j)
-      ≡⟨⟩
-        σ (h j) (qr ε (m at_) j)
-      ∎
-      where open ≡.≡-Reasoning
-    
-    qr-as-σ⁻¹h : ∀ j → qr ε (m at_) j ≡ σ⁻¹ (h j) (h j)
-    qr-as-σ⁻¹h j =
-      begin
-        qr ε (m at_) j
-      ≡⟨ σ⁻¹-σ (h j) (qr ε (m at_) j) ⟨
-        σ⁻¹ (h j) (σ (h j) (qr ε (m at_) j))
-      ≡⟨ ≡.cong (σ⁻¹ (h j)) (h-as-σqr j) ⟨
-        σ⁻¹ (h j) (h j)
-      ∎
-      where open ≡.≡-Reasoning
-    
-    w₅ : I → I → M
-    w₅ i = α i m
-
-    Δw₅≗const-m : Δ w₅ ≗ F.const m
-    Δw₅≗const-m j = ≡.cong (if_then _ else _) (dec-refl {i = j})
-
-    _ : d w₅ ≡ (m at_)
-    _ = ≡.refl
-
-    g-h-id' : ∀ j → j ≡ g (h j)
-    g-h-id' j =
-      begin
-        j
-      ≡⟨ qr-outer-ε m j ⟨
-        qr ε (F.const m) j
-      ≡⟨ qr-cong₂ Δw₅≗const-m j ⟨
-        qr ε (Δ w₅) j
-      ≡⟨ qr-qr-ee w₅ j ⟩
-        qr ε (w₅ (ql ε (d w₅) j)) (qr ε (d w₅) j)
-      ≡⟨⟩
-        qr ε (w₅ (h j)) (qr ε (m at_) j)
-      ≡⟨ ≡.cong (qr ε (w₅ (h j))) (qr-as-σ⁻¹h j) ⟩
-        qr ε (α (h j) m) (σ⁻¹ (h j) (h j))
-      ≡⟨⟩
         g (h j)
+      ≡⟨⟩
+        qr ε (at (h j) m) (σ⁻¹ (h j) (h j))
+      ≡⟨ ≡.cong (qr ε (w₅ (h j))) (hᵣ-σ⁻¹h j) ⟨
+        qr ε (w₅ (h j)) (hᵣ j)
+      ≡⟨⟩
+        qr ε (w₅ (ql ε (d w₅) j)) (qr ε (d w₅) j)
+      ≡⟨ qr-qr-ee w₅ j ⟨
+        qr ε (Δ w₅) j
+      ≡⟨ qr-cong₂ Δw₅≗const-m j ⟩
+        qr ε (F.const m) j
+      ≡⟨ qr-outer-ε m j ⟩
+        j
       ∎
-      where open ≡.≡-Reasoning
-    
+      where
+        open ≡.≡-Reasoning
+  
+  module ql-v-inv (v : I → M) where
+    module m-inv = ql-m-inv (ε • v)
+    open m-inv
+    open m-inv using (g) public
+
     g-ql-id : Invʳ g (ql ε v)
     g-ql-id j =
       begin
         g (ql ε v j)
-      ≡⟨ ≡.cong g (ql-v≗ql-mi j) ⟩
+      ≡⟨ ≡.cong g (ql-ε-proj j v) ⟨
         g (h j)
-      ≡⟨ g-h-id' j ⟨
+      ≡⟨ gh-id j ⟩
         j
       ∎
       where open ≡.≡-Reasoning
@@ -594,6 +599,6 @@ module _ {ℓ} {M : Set ℓ} {n : ℕ}
 
   leftIso : LeftIso raw
   leftIso = record {
-      ql⁻¹ = ql-inv-construct.g;
-      ql⁻¹-correct = ql-inv-construct.ql-inv-correct
+      ql⁻¹ = ql-v-inv.g;
+      ql⁻¹-correct = ql-v-inv.ql-inv-correct
     }

@@ -121,21 +121,20 @@ module preliminary
   open IsMonad' law
   open IsMonad'-consequences law
 
-  α : I → M → I → M
-  α i m j = if ⌊ i ≟ j ⌋ then m else ε
+  at : I → M → I → M
+  at i m j = if ⌊ i ≟ j ⌋ then m else ε
 
-  β : I → M → I → M
-  β i m j = if ⌊ i ≟ j ⌋ then ε else m
+  but : I → M → I → M
+  but i m j = if ⌊ i ≟ j ⌋ then ε else m
 
   -- projection
-  infixl 9 _at_
-  _at_ : M → I → M
-  _at_ m i = ε • α i m
+  proj : I → M → M
+  proj i m = ε • at i m
 
-  at-ε : ∀ (i : I) → ε at i ≡ ε
-  at-ε i =
+  proj-ε : ∀ (i : I) → proj i ε ≡ ε
+  proj-ε i =
     begin
-      ε at i
+      proj i ε
     ≡⟨⟩
       ε • (λ j → if i == j then ε else ε)
     ≡⟨ •-cong₂ (λ _ → if-dud) ⟩
@@ -145,13 +144,13 @@ module preliminary
     ∎
     where open ≡.≡-Reasoning
 
-  at-ε• : ∀ (v : I → M) (i : I)  →
-    (ε • v) at i ≡ (v i) at i
-  at-ε• v i =
+  proj-ε• : ∀ (v : I → M) (i : I) →
+    proj i (ε • v) ≡ proj i (v i)
+  proj-ε• v i =
     begin
-      (ε • v) at i
+      proj i (ε • v)
     ≡⟨⟩
-      ε • α i (ε • v)
+      ε • at i (ε • v)
     ≡⟨⟩
       ε • (λ j → if i == j then ε • v else ε)
     ≡⟨ •-cong₂ (λ j → ≡.cong (if i == j then ε • v else_) (≡.sym ε-ε)) ⟩
@@ -167,47 +166,47 @@ module preliminary
     ⟩
       ε • (λ j → if i == j then v i else ε)
     ≡⟨⟩
-      (v i) at i
+      proj i (v i)
     ∎
     where
       open ≡.≡-Reasoning
 
-  at-at : ∀ (m : M) (i j : I) →
-    m at i at j
+  proj-proj : ∀ (i j : I) (m : M) →
+    proj j (proj i m)
       ≡
-    (if (i == j) then m at i else ε)
-  at-at m i j =
+    (if (i == j) then proj i m else ε)
+  proj-proj i j m =
     begin
-      m at i at j
+      proj j (proj i m)
     ≡⟨⟩
-      (ε • α i m) at j
-    ≡⟨ at-ε• (α i m) j ⟩
-      (α i m j) at j
-    ≡⟨ case-apply₂ (i == j) (_at j) ⟩
-      (if (i == j) then m at j else ε at j)
-    ≡⟨ rewrite-under-if i j (λ eq → ≡.cong (m at_) (≡.sym eq)) ⟩
-      (if (i == j) then m at i else ε at j)
-    ≡⟨ ≡.cong (if (i == j) then m at i else_) (at-ε j) ⟩
-      (if (i == j) then m at i else ε)
+      proj j (ε • at i m)
+    ≡⟨ proj-ε• (at i m) j ⟩
+      proj j (at i m j)
+    ≡⟨ case-apply₂ (i == j) (proj j) ⟩
+      (if (i == j) then proj j m else proj j ε)
+    ≡⟨ rewrite-under-if-else i j
+          (λ eq → ≡.cong (λ k → proj k m) (≡.sym eq))
+          (λ _ → proj-ε j) ⟩
+      (if (i == j) then proj i m else ε)
     ∎
     where
       open ≡.≡-Reasoning
 
-  at-at-≡ : ∀ (m : M) (i : I) → m at i at i ≡ m at i
-  at-at-≡ m i = ≡.trans (at-at m i i) (≡.cong (if_then m at i else ε) dec-refl)
+  proj-proj-≡ : ∀ (i : I) (m : M)  → proj i (proj i m) ≡ proj i m
+  proj-proj-≡ i m = ≡.trans (proj-proj i i m) (≡.cong (if_then proj i m else ε) dec-refl)
 
-  at-at-≢ : ∀ (m : M) {i j : I} (_ : i ≢ j) → m at i at j ≡ ε
-  at-at-≢ m {i} {j} i≢j =
-    ≡.trans (at-at m i j) (≡.cong (if_then m at i else ε) (dec-neq i≢j))
+  proj-proj-≢ : ∀{i j : I} (_ : i ≢ j)  (m : M) → proj j (proj i m) ≡ ε
+  proj-proj-≢ {i} {j} i≢j m =
+    ≡.trans (proj-proj i j m) (≡.cong (if_then proj i m else ε) (dec-neq i≢j))
 
-  ε•-at : ∀ (m : M) → ε • (m at_) ≡ m
-  ε•-at m =
+  ε•-proj : ∀ (m : M) → ε • (λ i → proj i m) ≡ m
+  ε•-proj m =
     begin
-      (ε • λ i → m at i)
+      (ε • λ i → proj i m)
     ≡⟨⟩
-      (ε • λ i → ε • α i m)
-    ≡⟨ ε•-ε• (λ i j → α i m j) ⟩
-      (ε • λ i → α i m i)
+      (ε • λ i → ε • at i m)
+    ≡⟨ ε•-ε• (λ i j → at i m j) ⟩
+      (ε • λ i → at i m i)
     ≡⟨⟩
       (ε • λ i → if i == i then m else ε)
     ≡⟨ •-cong₂ (λ i → ≡.cong (if_then m else ε) dec-refl) ⟩
@@ -217,19 +216,19 @@ module preliminary
     ∎
     where open ≡.≡-Reasoning
   
-  ε•β-at : ∀ (m : M) (i : I) → ε • β i (m at i) ≡ ε
-  ε•β-at m i =
+  ε•but-proj : ∀ (m : M) (i : I) → ε • but i (proj i m) ≡ ε
+  ε•but-proj m i =
     begin
-      (ε • β i (m at i))
+      (ε • but i (proj i m))
     ≡⟨⟩
-      (ε • λ j → if i == j then ε else ε • α i m)
-    ≡⟨ •-cong₂ (λ j → ≡.cong (if i == j then_else ε • α i m) ε-ε) ⟨
-      (ε • λ j → if i == j then ε • F.const ε else ε • α i m)
+      (ε • λ j → if i == j then ε else ε • at i m)
+    ≡⟨ •-cong₂ (λ j → ≡.cong (if i == j then_else ε • at i m) ε-ε) ⟨
+      (ε • λ j → if i == j then ε • F.const ε else ε • at i m)
     ≡⟨ •-cong₂ (λ j → case-apply₂ (i == j) (ε •_)) ⟨
-      (ε • λ j → ε • (if i == j then F.const ε else α i m))
+      (ε • λ j → ε • (if i == j then F.const ε else at i m))
     ≡⟨ ε•-ε• _ ⟩
-      (ε • λ j → (if i == j then F.const ε else α i m) j)
-    ≡⟨ •-cong₂ (λ j → case-apply₁ (i == j) (F.const ε) (α i m)) ⟩
+      (ε • λ j → (if i == j then F.const ε else at i m) j)
+    ≡⟨ •-cong₂ (λ j → case-apply₁ (i == j) (F.const ε) (at i m)) ⟩
       (ε • λ j → if i == j then ε else (if i == j then m else ε))
     ≡⟨ •-cong₂ (λ j → ≡.trans (if-else-if (i == j)) if-dud) ⟩
       (ε • λ i → ε)
@@ -238,16 +237,16 @@ module preliminary
     ∎
     where open ≡.≡-Reasoning
 
-  ql-ε-at : ∀ (v : I → M) (i : I) → ql ε ((ε • v) at_) i ≡ ql ε v i
-  ql-ε-at v i =
+  ql-ε-proj : ∀ (i : I) (v : I → M) → ql ε (λ j → proj j (ε • v)) i ≡ ql ε v i
+  ql-ε-proj i v =
     let open ≡.≡-Reasoning in
     begin
-      ql ε (n at_) i
-    ≡⟨ ql-cong₂ (at-ε• v) i ⟩
+      ql ε (λ j → proj j (ε • v)) i
+    ≡⟨ ql-cong₂ (proj-ε• v) i ⟩
       ql ε (Δ w) i
     ≡⟨ ql-ql-ee w i ⟩
-      ql ε (λ j → ε • (v j at_)) i
-    ≡⟨ ql-cong₂ (λ j → ε•-at (v j)) i ⟩
+      ql ε (λ j → ε • w j) i
+    ≡⟨ ql-cong₂ (λ j → ε•-proj (v j)) i ⟩
       ql ε v i
     ∎
     where
@@ -255,7 +254,7 @@ module preliminary
       n = ε • v
       
       w : I → I → M
-      w j k = v j at k      
+      w j k = proj k (v j)
 
 module factorization
   {raw : RawMonad' M I}
@@ -268,7 +267,7 @@ module factorization
 
   -- Range of projections ("factors")
   FM : (i : I) → Set m
-  FM i = Σ M (λ m → m at i ≡ m)
+  FM i = Σ M (λ m → proj i m ≡ m)
 
   -- Product of all factors (FM i).
   -- (we will show later that Factors is isomorphic to M)
@@ -281,7 +280,7 @@ module factorization
 
   -- to product of factors
   factorize : M → ((i : I) → FM i) 
-  factorize m i = m at i , at-at-≡ m i
+  factorize m i = proj i m , proj-proj-≡ i m
 
   -- from product of factors
   combine : ((i : I) → FM i) → M
@@ -301,8 +300,8 @@ module factorization
       ≡⟨⟩
         (ε • λ i → proj₁ (f i))
       ≡⟨ •-cong₂ f≈ ⟩
-        (ε • λ i → m at i)
-      ≡⟨ ε•-at m ⟩
+        (ε • λ i → proj i m)
+      ≡⟨ ε•-proj m ⟩
         m
       ∎
       where open ≡.≡-Reasoning
@@ -312,9 +311,9 @@ module factorization
       begin
         proj₁ (factorize (combine f) j)
       ≡⟨⟩
-        (ε • f₁) at j
-      ≡⟨ at-ε• f₁ j ⟩
-        (f₁ j) at j
+        proj j (ε • f₁)
+      ≡⟨ proj-ε• f₁ j ⟩
+        proj j (f₁ j)
       ≡⟨ proj₂ (f j) ⟩
         f₁ j
       ∎
@@ -348,19 +347,22 @@ module _
   ql-ε-id→ql-id ql-ε-id m v i =
     begin
       ql m v i
-    ≡⟨ ≡.cong (λ m → ql m v i) (ε•-at m) ⟨
-      ql (ε • m at_) v i
+    ≡⟨ ≡.cong (λ m → ql m v i) (ε•-proj m) ⟨
+      ql (ε • pm) v i
     ≡⟨ ql-cong₂ diagw≗v i ⟨
-      ql (ε • m at_) (diag ε (m at_) w) i
-    ≡⟨ ql-ε-id (m at_) _ ⟨
-      ql ε (m at_) (ql (ε • m at_) (diag ε (m at_) w) i)
-    ≡⟨ ql-ql ε (m at_) w i ⟩
-      ql ε (zip (m at_) w) i
+      ql (ε • pm) (diag ε pm w) i
+    ≡⟨ ql-ε-id pm _ ⟨
+      ql ε pm (ql (ε • pm) (diag ε pm w) i)
+    ≡⟨ ql-ql ε pm w i ⟩
+      ql ε (zip pm w) i
     ≡⟨ ql-ε-id _ i ⟩
       i
     ∎
     where
       open ≡.≡-Reasoning
+
+      pm : I → M
+      pm j = proj j m
 
       w : I → I → M
       w j _ = v j
@@ -407,16 +409,16 @@ module LeftIso→StateLike
 
   private
     σ : M → I → I
-    σ m = ql ε (m at_)
+    σ m = ql ε (λ i → proj i m)
 
     σ⁻¹ : M → I → I
-    σ⁻¹ m = ql⁻¹ (m at_)
+    σ⁻¹ m = ql⁻¹ (λ i → proj i m)
 
     σ-σ⁻¹ : ∀ (m : M) (i : I) → σ m (σ⁻¹ m i) ≡ i
-    σ-σ⁻¹ m = ql-ql⁻¹ (m at_)
+    σ-σ⁻¹ m = ql-ql⁻¹ (λ i → proj i m)
     
     σ⁻¹-σ : ∀ (m : M) (i : I) → σ⁻¹ m (σ m i) ≡ i
-    σ⁻¹-σ m = ql⁻¹-ql (m at_)
+    σ⁻¹-σ m = ql⁻¹-ql (λ i → proj i m)
     
     -- σ defines automorphism on monomial container (M ▷′ I)
     shift : (M ▷′ I) ⇒ (M ▷′ I)
@@ -461,8 +463,8 @@ module LeftIso→StateLike
       begin
         σ ε i
       ≡⟨⟩ 
-        ql ε (ε at_) i
-      ≡⟨ ql-cong₂ at-ε i ⟩
+        ql ε (λ j → proj j ε) i
+      ≡⟨ ql-cong₂ proj-ε i ⟩
         ql ε (F.const ε) i
       ≡⟨ ql-inner-ε ε i ⟩
         i
@@ -492,8 +494,8 @@ module LeftIso→StateLike
         ql ε v (σ⁻¹ (ε •′ v) i)
       ≡⟨ ≡.cong (λ m′ → ql ε v (σ⁻¹ m′ i)) (ε•′ v) ⟩
         ql ε v (σ⁻¹ (ε • v) i)
-      ≡⟨ ql-ε-at v _ ⟨
-        ql ε ((ε • v) at_) (σ⁻¹ (ε • v) i)
+      ≡⟨ ql-ε-proj _ v ⟨
+        ql ε (λ j → proj j (ε • v)) (σ⁻¹ (ε • v) i)
       ≡⟨⟩
         σ (ε • v) (σ⁻¹ (ε • v) i)
       ≡⟨ σ-σ⁻¹ _ _ ⟩
