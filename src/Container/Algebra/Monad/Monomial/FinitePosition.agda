@@ -75,7 +75,7 @@ open defs
 
 module Fin-lemmata where
   -- EITHER (P x) holds for all (x : A) OR
-  -- there'αᵣ a counterexample x₀ such that ¬ P x₀.
+  -- there's a counterexample x₀ such that ¬ P x₀.
   data Searched {a b} {A : Set a} (P : A → Set b) : Set (a ⊔ b) where
     all-yes : (∀ x → P x) → Searched P
     counter : (∃ λ x → ¬ P x) → Searched P
